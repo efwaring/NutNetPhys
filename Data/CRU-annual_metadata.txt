@@ -1,0 +1,28 @@
+Metadata for SPEI data of NutNet sites
+Address any questions to Siddharth Iyengar - iyeng029@umn.edu
+
+Climate data is derived from monthly data of precipitation and PET from CRU TS v 4.01 (https://crudata.uea.ac.uk/cru/data/hrg/), which runs from 1901-2016. The Standardized Precipitation Evapotranspiration Index - SPEI (http://spei.csic.es/home.html) is calculated at different time scales (6 month, 12 month and 24 month) using the package spei in R. 
+Precipitation and PET are summed for the water year at each site i.e. if site icream.fr harvests biomass annually in August, the values in the precip column for site icream.fr in 2015 is the total precipitation from September 2014 - August 2015.
+
+Based on SPEI values, individual years are classified in terms of water availability as following Isbell et al. (2015) -
+    -2 = extremely dry, <10th percentile of SPEI in the time series
+    -1 = moderately dry, 10-25th percentile of SPEI in the time series
+    0 = normal, 25-75th percentile of SPEI in the time series
+    1 = moderately wet, 75-90th percentile of SPEI in the time series
+    2 = extremely wet, >90th percentile of SPEI in the time series 
+
+** Column Descriptions **
+
+site_code - as per NutNet	
+year - This corresponds to water year, see description above.
+precip - total precip over the water year, in mm	
+PET - potential evapotranspiration totalled over the water year, in mm	
+SPEI_12 - SPEI index calculated at a 12 month time scale	
+SPEI_6 - SPEI index calculated at a 6 month time scale	
+SPEI_24 - SPEI index calculated at a 24 month time scale	
+SPEI_12.class - SPEI index calculated at a 12 month time scale	
+SPEI_6.class - SPEI index calculated at a 6 month time scale	
+SPEI_24.class - SPEI index calculated at a 24 month time scale	
+precip.mean - Mean annual precip calculated over the period from 1975-2016	
+PET.mean - Mean annual PET calculated over the period from 1975-2016	
+
