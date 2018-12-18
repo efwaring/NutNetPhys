@@ -14,6 +14,7 @@ library(emmeans)
 library(dplyr)
 library(plyr)
 library(RColorBrewer)
+library(multcompView)
 
 #########################################
 # read in and modify foliar trait dataset (Jen Firn)
@@ -148,7 +149,41 @@ summary(lm_deltaNarea)
 # Q3: does plot N differ among treatments?
 #########################################
 
+plot = read.csv('../Data/full-biomass-nutrients-06-December-2017.csv')
 
+plot$Ntrt = 0
+plot$Ntrt[plot$trt == 'N' | plot$trt == 'NP' | plot$trt == 'NK' | plot$trt == 'NPK' | plot$trt == 'NPK+Fence'] = 1
+plot$Ptrt = 0
+plot$Ptrt[plot$trt == 'P' | plot$trt == 'NP' | plot$trt == 'PK' | plot$trt == 'NPK' | plot$trt == 'NPK+Fence'] = 1
+plot$Ktrt = 0
+plot$Ktrt[plot$trt == 'K' | plot$trt == 'NK' | plot$trt == 'PK' | plot$trt == 'NPK' | plot$trt == 'NPK+Fence'] = 1
+
+plot$pct_N_num = as.numeric(as.character(plot$pct_N))
+plot$N_tot = as.numeric(as.character(plot$pct_N)) * as.numeric(as.character(plot$mass))
+
+plot$Ntrt_fac = as.factor(plot$Ntrt)
+plot$Ptrt_fac = as.factor(plot$Ptrt)
+plot$Ktrt_fac = as.factor(plot$Ktrt)
+
+plot$Nfix = 'no'
+plot$Nfix[plot$category == "LEGUME"] = 'yes'
+plot$Nfix[plot$category == "BRYOPHYTE"] = 'bryo'
+
+plot_pct_N_num_lmer = lmer(pct_N_num ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
+Anova(plot_pct_N_num_lmer)
+plot(resid(plot_pct_N_num_lmer) ~ fitted(plot_pct_N_num_lmer))
+cld(emmeans(plot_pct_N_num_lmer, ~Ntrt_fac * Nfix)) # 16% increase in non-N fixing non-bryophytes
+cld(emmeans(plot_pct_N_num_lmer, ~Ntrt_fac))
+
+plot_N_tot_lmer = lmer(log(N_tot) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
+Anova(plot_N_tot_lmer)
+plot(resid(plot_N_tot_lmer) ~ fitted(plot_N_tot_lmer))
+cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac * Nfix)) # 9% increase in non-N fixing non-bryophytes
+cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac))
+
+#########################################
+# A3: does plot N differ among treatments? yes, it seems that the N treatment increases plot %N by ~ 16% in the normal species. No change in N fixers and bryophytes. Interestingly, the total plot N only goes up by ~9% in the "normal" species. This is still quite a bit bigger than the change in per leaf area N!
+#########################################
 
 
 #########################################
@@ -182,7 +217,7 @@ mtext(side = 2, '∆Narea', line = 5, cex = 3)
 # text(0.5, 90, 'Mean ± 95% CI: 12.1 ± 10.8', cex = 1.5)
 
 #########################################
-# Q3: can we predict Narea?
+# Q4: can we predict Narea?
 #########################################
 
 # does N area increase with abs(latitude)?

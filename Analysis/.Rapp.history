@@ -93,3 +93,62 @@ text(1.5, 0, 'non-fixers', cex = 2)#
 text(3.5, 0, 'N-fixers', cex = 2)#
 axis(2, seq(-20, 0, 5), cex.axis = 2, las = 1)#
 mtext(side = 2, 'log(Narea)', cex = 3, line = 5)
+library(lme4)#
+library(car)#
+library(emmeans)#
+library(dplyr)#
+library(plyr)#
+library(RColorBrewer)
+install.packages('lme4')
+install.packages('car')
+install.packages('emmeans')
+install.packages('dplyr')
+library(lme4)#
+library(car)#
+library(emmeans)#
+library(dplyr)#
+library(plyr)#
+library(RColorBrewer)
+leaf = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')#
+#
+leaf[leaf == 'NULL'] <- NA#
+#
+leaf[, 8:30] <- sapply(leaf[, 8:30], as.character)#
+leaf[, 8:30] <- sapply(leaf[, 8:30], as.numeric)#
+#
+leaf$Ntrt = 0#
+leaf$Ntrt[leaf$trt == 'N' | leaf$trt == 'NP' | leaf$trt == 'NK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+leaf$Ptrt = 0#
+leaf$Ptrt[leaf$trt == 'P' | leaf$trt == 'NP' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+leaf$Ktrt = 0#
+leaf$Ktrt[leaf$trt == 'K' | leaf$trt == 'NK' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+#
+leaf$Ntrt_fac = as.factor(leaf$Ntrt)#
+leaf$Ptrt_fac = as.factor(leaf$Ptrt)#
+leaf$Ktrt_fac = as.factor(leaf$Ktrt)#
+#
+leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)#
+#
+leaf$Nfix = 'no'#
+leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'#
+#
+# add core data to the dataset#
+core = read.csv('../Data/comb-by-plot-09-April-2018.csv')#
+core[core == 'NULL'] <- NA#
+#
+core[, 26:45] <- sapply(core[, 26:45], as.character)#
+core[, 26:45] <- sapply(core[, 26:45], as.numeric)#
+#
+core$par_rat = core$Ground_PAR / core$Ambient_PAR#
+leaf_core = join(leaf, core, by = c("site_code", "year", "block", "plot", "trt"), type = 'left', match = 'first')#
+#
+# add SPEI to "leaf_core" data#
+spei = read.csv('../Data/CRU-annual_2018-07-06.csv')#
+spei$p_pet = spei$precip / spei$PET#
+#
+leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left', match = 'first')#
+#
+# check#
+nrow(leaf)#
+nrow(leaf_core) # some core data matches the leaf data twice...#
+nrow(leaf_core_spei)
