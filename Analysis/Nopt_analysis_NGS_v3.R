@@ -244,7 +244,7 @@ for (i in 1:nrow(leaf_core_spei)){
 	currentLat = leaf_core_spei$latitude[i]
 	currentLon = leaf_core_spei$longitude[i]
 	
-	clim_comb = tmp_globe
+	climb_comb = tmp_globe
 	latClim = climb_comb[ , 3]
 	lonClim = climb_comb[ , 2]
 	
@@ -293,8 +293,8 @@ for (i in 1:nrow(leaf_core_spei)){
 	
 }
 
-plot(climate_df[,5] ~ climate_df[,7])
-plot(climate_df[,6] ~ climate_df[,8])
+# plot(climate_df[,5] ~ climate_df[,7])
+# plot(climate_df[,6] ~ climate_df[,8])
 
 leaf_core_spei$tmp = climate_df[, 1]
 leaf_core_spei$par = climate_df[, 2]
