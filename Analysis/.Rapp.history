@@ -152,3 +152,496 @@ leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left
 nrow(leaf)#
 nrow(leaf_core) # some core data matches the leaf data twice...#
 nrow(leaf_core_spei)
+library(lme4)#
+library(car)#
+library(emmeans)#
+library(dplyr)#
+library(plyr)#
+library(RColorBrewer)#
+library(multcompView)#
+#
+##########################################
+# read in and modify foliar trait dataset (Jen Firn)#
+##########################################
+#
+leaf = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')#
+#
+leaf[leaf == 'NULL'] <- NA#
+#
+leaf[, 8:30] <- sapply(leaf[, 8:30], as.character)#
+leaf[, 8:30] <- sapply(leaf[, 8:30], as.numeric)#
+#
+leaf$Ntrt = 0#
+leaf$Ntrt[leaf$trt == 'N' | leaf$trt == 'NP' | leaf$trt == 'NK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+leaf$Ptrt = 0#
+leaf$Ptrt[leaf$trt == 'P' | leaf$trt == 'NP' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+leaf$Ktrt = 0#
+leaf$Ktrt[leaf$trt == 'K' | leaf$trt == 'NK' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+#
+leaf$Ntrt_fac = as.factor(leaf$Ntrt)#
+leaf$Ptrt_fac = as.factor(leaf$Ptrt)#
+leaf$Ktrt_fac = as.factor(leaf$Ktrt)#
+#
+leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)#
+#
+leaf$Nfix = 'no'#
+leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'#
+#
+# add core data to the dataset#
+core = read.csv('../Data/comb-by-plot-09-April-2018.csv')#
+core[core == 'NULL'] <- NA#
+#
+core[, 26:45] <- sapply(core[, 26:45], as.character)#
+core[, 26:45] <- sapply(core[, 26:45], as.numeric)#
+#
+core$par_rat = core$Ground_PAR / core$Ambient_PAR#
+leaf_core = join(leaf, core, by = c("site_code", "year", "block", "plot", "trt"), type = 'left', match = 'first')#
+#
+# add SPEI to "leaf_core" data#
+spei = read.csv('../Data/CRU-annual_2018-07-06.csv')#
+spei$p_pet = spei$precip / spei$PET#
+#
+leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left', match = 'first')#
+#
+# check#
+nrow(leaf)#
+nrow(leaf_core) # some core data matches the leaf data twice...#
+nrow(leaf_core_spei)
+hist(leaf_core_spei $leaf_pct_N)#
+leafNper_lmer = lmer(leaf_pct_N ~ Ntrt_fac * Nfix + p_pet + (1|site_code) + (1|Family) + (1|Taxon) + (1|site_code:Family) + (1|site_code:Taxon), data = leaf_core_spei)#
+plot(resid(leafNper_lmer) ~ fitted(leafNper_lmer))#
+Anova(leafNper_lmer)
+leafNarea_lmer = lmer(log(Narea) ~ Ntrt_fac * Nfix + p_pet + (1|site_code) + (1|Family) + (1|Taxon) + (1|site_code:Family) + (1|site_code:Taxon), data = leaf_core_spei)#
+plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))#
+Anova(leafNarea_lmer)
+leaf_core_spei_nofix = subset(leaf_core_spei, Nfix == 'no')#
+#
+leaf_core_spei_nofix_group = group_by(leaf_core_spei_nofix, site_code, year, Ntrt_fac)#
+leaf_core_spei_nofix_mean = summarise_all(leaf_core_spei_nofix_group, .funs = funs(Mean = mean(., na.rm = T), SD = sd(., na.rm = T)))#
+#
+leaf_core_spei_nofix_mean_yN = subset(leaf_core_spei_nofix_mean, Ntrt_fac == '1')#
+leaf_core_spei_nofix_mean_nN = subset(leaf_core_spei_nofix_mean, Ntrt_fac == '0')#
+#
+nrow(leaf_core_spei_nofix_mean_yN)#
+nrow(leaf_core_spei_nofix_mean_nN)#
+#
+deltaNper = ((leaf_core_spei_nofix_mean_yN$leaf_pct_N_Mean - leaf_core_spei_nofix_mean_nN$leaf_pct_N_Mean) / leaf_core_spei_nofix_mean_nN$leaf_pct_N_Mean) * 100#
+#
+deltaNarea = ((leaf_core_spei_nofix_mean_yN$Narea_Mean - leaf_core_spei_nofix_mean_nN$Narea_Mean) / leaf_core_spei_nofix_mean_nN$Narea_Mean) * 100
+plot(leaf_core_spei$Narea ~ abs(leaf_core_spei$latitude))#
+summary(lm(log(leaf_core_spei$Narea) ~ abs(leaf_core_spei$latitude))) # increases with latitude (temperature effect)#
+#
+# what about with climate?#
+#
+# read in gs climate (>0°C)#
+tmp_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_tmp_climExtract_growingseason_globe.csv')#
+par_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_par_climExtract_growingseason_globe.csv')#
+vpd_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_vpd_climExtract_growingseason_globe.csv')#
+z_globe =  read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/z_globe.csv')#
+#
+leaf_core_spei$tmp = NA#
+leaf_core_spei$par = NA#
+leaf_core_spei$vpd = NA#
+leaf_core_spei$z = NA#
+#
+climate_df = c()#
+for (i in 1:nrow(leaf_core_spei)){#
+	currentLat = leaf_core_spei$latitude[i]#
+	currentLon = leaf_core_spei$longitude[i]#
+	clim_comb = tmp_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp#
+    clim_comb = par_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    par = subset(clim_comb, lat==best_lat & lon==best_lon)$par#
+    clim_comb = vpd_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd#
+    clim_comb = z_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    z = subset(clim_comb, lat==best_lat & lon==best_lon)$z#
+    climate_df = rbind(climate_df, c(tmp, par, vpd, z, currentLat, currentLon, best_lat, best_lon, i))#
+}#
+#
+plot(climate_df[,5] ~ climate_df[,7])#
+plot(climate_df[,6] ~ climate_df[,8])#
+#
+leaf_core_spei$tmp = climate_df[, 1]#
+leaf_core_spei$par = climate_df[, 2]#
+leaf_core_spei$vpd = climate_df[, 3]#
+leaf_core_spei$z = climate_df[, 4]
+currentLat = leaf_core_spei$latitude[i]
+currentLon = leaf_core_spei$longitude[i]
+currentLat
+currentLon
+clim_comb = tmp_globe
+latClim = climb_comb[ , 3]
+climate_df = c()#
+for (i in 1:nrow(leaf_core_spei)){#
+	currentLat = leaf_core_spei$latitude[i]#
+	currentLon = leaf_core_spei$longitude[i]#
+	climb_comb = tmp_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp#
+    clim_comb = par_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    par = subset(clim_comb, lat==best_lat & lon==best_lon)$par#
+    clim_comb = vpd_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd#
+    clim_comb = z_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    z = subset(clim_comb, lat==best_lat & lon==best_lon)$z#
+    climate_df = rbind(climate_df, c(tmp, par, vpd, z, currentLat, currentLon, best_lat, best_lon, i))#
+}
+leaf_core_spei$tmp = climate_df[, 1]#
+leaf_core_spei$par = climate_df[, 2]#
+leaf_core_spei$vpd = climate_df[, 3]#
+leaf_core_spei$z = climate_df[, 4]#
+#
+leaf_core_spei_by_site_Ntrt = group_by(leaf_core_spei, site_code, Ntrt_fac)#
+leaf_core_spei_by_site_Ntrt_mean = summarise_all(leaf_core_spei_by_site_Ntrt, .funs = funs(Mean = mean(., na.rm = T), SD = sd(., na.rm = T)))
+leafNarea_lmer_clim = lm(log(Narea_Mean) ~ tmp_Mean + par_Mean + Ntrt_fac, data = leaf_core_spei_by_site_Ntrt_mean)#
+plot(resid(leafNarea_lmer_clim) ~ fitted(leafNarea_lmer_clim))
+Anova(leafNarea_lmer_clim) # just temperature
+plot(climate_df[,5] ~ climate_df[,7])
+plot(climate_df[,6] ~ climate_df[,8])
+library(lme4)#
+library(car)#
+library(emmeans)#
+library(dplyr)#
+library(plyr)#
+library(RColorBrewer)#
+library(multcompView)#
+#
+##########################################
+# read in and modify foliar trait dataset (Jen Firn)#
+##########################################
+#
+leaf = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')#
+#
+leaf[leaf == 'NULL'] <- NA#
+#
+leaf[, 8:30] <- sapply(leaf[, 8:30], as.character)#
+leaf[, 8:30] <- sapply(leaf[, 8:30], as.numeric)#
+#
+leaf$Ntrt = 0#
+leaf$Ntrt[leaf$trt == 'N' | leaf$trt == 'NP' | leaf$trt == 'NK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+leaf$Ptrt = 0#
+leaf$Ptrt[leaf$trt == 'P' | leaf$trt == 'NP' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+leaf$Ktrt = 0#
+leaf$Ktrt[leaf$trt == 'K' | leaf$trt == 'NK' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1#
+#
+leaf$Ntrt_fac = as.factor(leaf$Ntrt)#
+leaf$Ptrt_fac = as.factor(leaf$Ptrt)#
+leaf$Ktrt_fac = as.factor(leaf$Ktrt)#
+#
+leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)#
+#
+leaf$Nfix = 'no'#
+leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'#
+#
+# add core data to the dataset#
+core = read.csv('../Data/comb-by-plot-09-April-2018.csv')#
+core[core == 'NULL'] <- NA#
+#
+core[, 26:45] <- sapply(core[, 26:45], as.character)#
+core[, 26:45] <- sapply(core[, 26:45], as.numeric)#
+#
+core$par_rat = core$Ground_PAR / core$Ambient_PAR#
+leaf_core = join(leaf, core, by = c("site_code", "year", "block", "plot", "trt"), type = 'left', match = 'first')#
+#
+# add SPEI to "leaf_core" data#
+spei = read.csv('../Data/CRU-annual_2018-07-06.csv')#
+spei$p_pet = spei$precip / spei$PET#
+#
+leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left', match = 'first')#
+#
+# check#
+nrow(leaf)#
+nrow(leaf_core) # some core data matches the leaf data twice...#
+nrow(leaf_core_spei)
+climate_df = c()#
+for (i in 1:nrow(leaf_core_spei)){#
+	currentLat = leaf_core_spei$latitude[i]#
+	currentLon = leaf_core_spei$longitude[i]#
+	climb_comb = tmp_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp#
+    clim_comb = par_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    par = subset(clim_comb, lat==best_lat & lon==best_lon)$par#
+    clim_comb = vpd_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd#
+    clim_comb = z_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    z = subset(clim_comb, lat==best_lat & lon==best_lon)$z#
+    climate_df = rbind(climate_df, c(tmp, par, vpd, z, currentLat, currentLon, best_lat, best_lon, i))#
+}#
+#
+# plot(climate_df[,5] ~ climate_df[,7])#
+# plot(climate_df[,6] ~ climate_df[,8])#
+#
+leaf_core_spei$tmp = climate_df[, 1]#
+leaf_core_spei$par = climate_df[, 2]#
+leaf_core_spei$vpd = climate_df[, 3]#
+leaf_core_spei$z = climate_df[, 4]
+plot(leaf_core_spei$Narea ~ abs(leaf_core_spei$latitude))
+plot(leaf_core_spei$Narea ~ abs(leaf_core_spei$latitude))
+summary(lm(log(leaf_core_spei$Narea) ~ abs(leaf_core_spei$latitude))) # increases with latitude (temperature effect)
+# read in gs climate (>0°C)#
+tmp_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_tmp_climExtract_growingseason_globe.csv')#
+par_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_par_climExtract_growingseason_globe.csv')#
+vpd_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_vpd_climExtract_growingseason_globe.csv')#
+z_globe =  read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/z_globe.csv')#
+#
+leaf_core_spei$tmp = NA#
+leaf_core_spei$par = NA#
+leaf_core_spei$vpd = NA#
+leaf_core_spei$z = NA#
+#
+climate_df = c()#
+for (i in 1:nrow(leaf_core_spei)){#
+	currentLat = leaf_core_spei$latitude[i]#
+	currentLon = leaf_core_spei$longitude[i]#
+	climb_comb = tmp_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp#
+    clim_comb = par_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    par = subset(clim_comb, lat==best_lat & lon==best_lon)$par#
+    clim_comb = vpd_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd#
+    clim_comb = z_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    z = subset(clim_comb, lat==best_lat & lon==best_lon)$z#
+    climate_df = rbind(climate_df, c(tmp, par, vpd, z, currentLat, currentLon, best_lat, best_lon, i))#
+}
+climb_comb = tmp_globe
+for (i in 1:nrow(leaf_core_spei)){#
+	currentLat = leaf_core_spei$latitude[i]#
+	currentLon = leaf_core_spei$longitude[i]#
+	clim_comb = tmp_globe#
+	latClim = clim_comb[ , 3]#
+	lonClim = clim_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp#
+    clim_comb = par_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    par = subset(clim_comb, lat==best_lat & lon==best_lon)$par#
+    clim_comb = vpd_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd#
+    clim_comb = z_globe#
+	latClim = climb_comb[ , 3]#
+	lonClim = climb_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    z = subset(clim_comb, lat==best_lat & lon==best_lon)$z#
+    climate_df = rbind(climate_df, c(tmp, par, vpd, z, currentLat, currentLon, best_lat, best_lon, i))#
+}
+leaf_core_spei$tmp = NA#
+leaf_core_spei$par = NA#
+leaf_core_spei$vpd = NA#
+leaf_core_spei$z = NA#
+#
+climate_df = c()#
+for (i in 1:nrow(leaf_core_spei)){#
+	currentLat = leaf_core_spei$latitude[i]#
+	currentLon = leaf_core_spei$longitude[i]#
+	clim_comb = tmp_globe#
+	latClim = clim_comb[ , 3]#
+	lonClim = clim_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp#
+    clim_comb = par_globe#
+	latClim = clim_comb[ , 3]#
+	lonClim = clim_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    par = subset(clim_comb, lat==best_lat & lon==best_lon)$par#
+    clim_comb = vpd_globe#
+	latClim = clim_comb[ , 3]#
+	lonClim = clim_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd#
+    clim_comb = z_globe#
+	latClim = clim_comb[ , 3]#
+	lonClim = clim_comb[ , 2]#
+	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))#
+    best_lat=latClim[best_lat_pos[1]]#
+    best_lon_pos=which(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)==min(abs(subset(clim_comb, lat== best_lat)$lon-currentLon)))#
+    best_lon=subset(clim_comb, lat== best_lat)$lon[best_lon_pos[1]]#
+    z = subset(clim_comb, lat==best_lat & lon==best_lon)$z#
+    climate_df = rbind(climate_df, c(tmp, par, vpd, z, currentLat, currentLon, best_lat, best_lon, i))#
+}
+leaf_core_spei$tmp = climate_df[, 1]#
+leaf_core_spei$par = climate_df[, 2]#
+leaf_core_spei$vpd = climate_df[, 3]#
+leaf_core_spei$z = climate_df[, 4]
+plot(climate_df[,5] ~ climate_df[,7])
+plot(climate_df[,6] ~ climate_df[,8])
+plot(climate_df[,5] ~ climate_df[,7])
+leaf_core_spei_by_site_Ntrt = group_by(leaf_core_spei, site_code, Ntrt_fac)#
+leaf_core_spei_by_site_Ntrt_mean = summarise_all(leaf_core_spei_by_site_Ntrt, .funs = funs(Mean = mean(., na.rm = T), SD = sd(., na.rm = T)))#
+#
+### ok let's try to compare predictions#
+leafNarea_lmer_clim = lm(log(Narea_Mean) ~ tmp_Mean + par_Mean + Ntrt_fac, data = leaf_core_spei_by_site_Ntrt_mean)#
+plot(resid(leafNarea_lmer_clim) ~ fitted(leafNarea_lmer_clim))
+Anova(leafNarea_lmer_clim) # just temperature
+plot(log(Narea_Mean) ~ tmp_Mean, data = leaf_core_spei_by_site_Ntrt_mean)
+abline(a = -0.2185934, b = -4.55581)
+ggplot(leaf_core_spei_by_site_Ntrt_mean, aes(x = tmp_Mean, y = log(Narea_Mean))) + #
+  geom_point() +#
+  stat_smooth(method = "lm", col = "red")
+library(ggplot2)
+ggplot(leaf_core_spei_by_site_Ntrt_mean, aes(x = tmp_Mean, y = log(Narea_Mean))) + #
+  geom_point() +#
+  stat_smooth(method = "lm", col = "red")
+plot = read.csv('../Data/full-biomass-nutrients-06-December-2017.csv')#
+#
+plot$Ntrt = 0#
+plot$Ntrt[plot$trt == 'N' | plot$trt == 'NP' | plot$trt == 'NK' | plot$trt == 'NPK' | plot$trt == 'NPK+Fence'] = 1#
+plot$Ptrt = 0#
+plot$Ptrt[plot$trt == 'P' | plot$trt == 'NP' | plot$trt == 'PK' | plot$trt == 'NPK' | plot$trt == 'NPK+Fence'] = 1#
+plot$Ktrt = 0#
+plot$Ktrt[plot$trt == 'K' | plot$trt == 'NK' | plot$trt == 'PK' | plot$trt == 'NPK' | plot$trt == 'NPK+Fence'] = 1#
+#
+plot$pct_N_num = as.numeric(as.character(plot$pct_N))#
+plot$N_tot = as.numeric(as.character(plot$pct_N)) * as.numeric(as.character(plot$mass))#
+#
+plot$Ntrt_fac = as.factor(plot$Ntrt)#
+plot$Ptrt_fac = as.factor(plot$Ptrt)#
+plot$Ktrt_fac = as.factor(plot$Ktrt)#
+#
+plot$Nfix = 'no'#
+plot$Nfix[plot$category == "LEGUME"] = 'yes'#
+plot$Nfix[plot$category == "BRYOPHYTE"] = 'bryo'
+plot_N_tot_lmer = lmer(log(N_tot) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
+Anova(plot_N_tot_lmer)
+plot(resid(plot_N_tot_lmer) ~ fitted(plot_N_tot_lmer))
+cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac * Nfix)) # 9% increase in non-N fixing non-bryophytes
+plot(log(N_tot) ~ Ntrt_fac,  data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
+plot(log(N_tot) ~ Ntrt_fac,  data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'))
+plot(log(N_tot) ~ Ntrt_fac,  data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'))
+ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = log(N_tot)))#
+	geom_boxplot()
+ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = N_tot))
+ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = N_tot)) +#
+	geom_boxplot()
+ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = log(N_tot))) +#
+	geom_boxplot()
+plot_N_tot_plot <- ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = log(N_tot))) +#
+	geom_boxplot()
+?theme
+plot_N_tot_plot + theme(axis.text.x = ('-N', '+N'))
+plot_N_tot_plot + theme(axis.text.x = c('-N', '+N'))
+plot_N_tot_plot + theme(axis.text.x = '-N')
+plot_N_tot_plot + theme(axis.text.x = element_text('-N'))
+?element_text
+plot_N_tot_plot + scale_x_discrete(labels = c('-N', '+N'))
