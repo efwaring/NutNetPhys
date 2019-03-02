@@ -309,6 +309,8 @@ leaf_core_spei$par = climate_df[, 2]
 leaf_core_spei$vpd = climate_df[, 3]
 leaf_core_spei$z = climate_df[, 4]
 
+# write.csv(leaf_core_spei, "../Data/leaf_plus.csv")
+
 leaf_core_spei_by_site_Ntrt = group_by(leaf_core_spei, site_code, Ntrt_fac)
 leaf_core_spei_by_site_Ntrt_mean = summarise_all(leaf_core_spei_by_site_Ntrt, .funs = funs(Mean = mean(., na.rm = T), SD = sd(., na.rm = T)))
 
