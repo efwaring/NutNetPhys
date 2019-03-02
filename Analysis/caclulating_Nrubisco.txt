@@ -1,0 +1,12 @@
+Vcmax = umol co2 m-2 s-1
+
+a = umol co2 gRubisco-1 s-1 (60 in Oleson)
+
+fnr = gRubico gNRubisco-1 (7.16 in Oleson)
+
+want: gNRubisco m-2 
+
+Vcmax * (1 / a) * (1 / fnr)
+
+Vcmax * (1/a) = gRubisco m-2 * (1/fnr) = gNrubisco m-2 (voila!)
+
