@@ -15,6 +15,7 @@ library(dplyr)
 library(plyr)
 library(RColorBrewer)
 library(multcompView)
+library(ggplot2)
 
 #########################################
 # read in and modify foliar trait dataset (Jen Firn)
@@ -181,6 +182,13 @@ plot(resid(plot_N_tot_lmer) ~ fitted(plot_N_tot_lmer))
 cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac * Nfix)) # 9% increase in non-N fixing non-bryophytes
 cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac))
 
+plot_N_tot_plot <- ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = log(N_tot))) +
+	geom_boxplot()
+
+plot_N_tot_plot + scale_x_discrete(labels = c('-N', '+N'))
+
+plot(log(N_tot) ~ Ntrt_fac,  data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'))
+
 #########################################
 # A3: does plot N differ among treatments? yes, it seems that the N treatment increases plot %N by ~ 16% in the normal species. No change in N fixers and bryophytes. Interestingly, the total plot N only goes up by ~9% in the "normal" species. This is still quite a bit bigger than the change in per leaf area N!
 #########################################
@@ -244,9 +252,9 @@ for (i in 1:nrow(leaf_core_spei)){
 	currentLat = leaf_core_spei$latitude[i]
 	currentLon = leaf_core_spei$longitude[i]
 	
-	climb_comb = tmp_globe
-	latClim = climb_comb[ , 3]
-	lonClim = climb_comb[ , 2]
+	clim_comb = tmp_globe
+	latClim = clim_comb[ , 3]
+	lonClim = clim_comb[ , 2]
 	
 	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))
     best_lat=latClim[best_lat_pos[1]]
@@ -256,8 +264,8 @@ for (i in 1:nrow(leaf_core_spei)){
     tmp = subset(clim_comb, lat==best_lat & lon==best_lon)$tmp
     
     clim_comb = par_globe
-	latClim = climb_comb[ , 3]
-	lonClim = climb_comb[ , 2]
+	latClim = clim_comb[ , 3]
+	lonClim = clim_comb[ , 2]
 	
 	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))
     best_lat=latClim[best_lat_pos[1]]
@@ -267,8 +275,8 @@ for (i in 1:nrow(leaf_core_spei)){
     par = subset(clim_comb, lat==best_lat & lon==best_lon)$par
     
     clim_comb = vpd_globe
-	latClim = climb_comb[ , 3]
-	lonClim = climb_comb[ , 2]
+	latClim = clim_comb[ , 3]
+	lonClim = clim_comb[ , 2]
 	
 	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))
     best_lat=latClim[best_lat_pos[1]]
@@ -278,8 +286,8 @@ for (i in 1:nrow(leaf_core_spei)){
     vpd = subset(clim_comb, lat==best_lat & lon==best_lon)$vpd
     
     clim_comb = z_globe
-	latClim = climb_comb[ , 3]
-	lonClim = climb_comb[ , 2]
+	latClim = clim_comb[ , 3]
+	lonClim = clim_comb[ , 2]
 	
 	best_lat_pos=which(abs(latClim-currentLat)==min(abs(latClim-currentLat)))
     best_lat=latClim[best_lat_pos[1]]
@@ -314,8 +322,9 @@ emmeans(leafNarea_lmer_clim, ~ tmp_Mean, at = list(tmp_Mean = 0))
 # try to predict using optimal Vcmax
 
 
-plot(log(Narea_Mean) ~ tmp_Mean, data = leaf_core_spei_by_site_Ntrt_mean)
-abline(a = -0.2185934, b = -4.55581)
+ggplot(leaf_core_spei_by_site_Ntrt_mean, aes(x = tmp_Mean, y = log(Narea_Mean))) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red")
 
 
 
