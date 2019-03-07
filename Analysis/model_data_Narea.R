@@ -5,6 +5,10 @@
 
 ## load libraries
 library(R.utils)
+library(lme4)
+library(car)
+devtools::install_github("hohenstein/remef")
+library(remef)
 
 ## load optimal vcmax script (Smith et al., Ecology Letters)
 sourceDirectory('optimal_vcmax_R/functions')
@@ -32,10 +36,17 @@ traits_sub$vcmax25_mod = traits_sub$vcmax_mod / calc_tresp_mult(traits_sub$tmp, 
 traits_sub$vcmax25_mod[traits_sub$vcmax25_mod < 0] <- NA
 
 ## calculate N from rubisco and structure
+### from Ning Dong: Nrubisco (g per m2) = ((vcmax25 * Mr * nr) / (kcat * Nr)) * Mn
+### vcmax25 = vcmax at 25C (umol m-2 s-1)
+### Nr = number of catalytic sites per mole of Rubisco = 8 mol Rubisco site per mol Rubisco
+### kcat = catalytic turnover at 25C = 3.5 CO2 per mol Rubisco site per second
+### Mr = molecular mass of Rubisco = 0.55 g Rubisco per umol Rubisco (550000 g Rubisco per mol Rubisco)
+### nr = N concentration of Rubisco = 11400 mol N per g Rubisco
+### Mn = molecular mass of N = 14 gN per mol N
 ### specific activity of rubisco is 60 umol CO2 gRubisco-1 s-1
 ### mass ratio of rubisco is 7.16 gRubisco gNRubisco-1
 ### lma conversion from Dong et al. (2017) Biogeosciences
-traits_sub$n_rubisco_mod = traits_sub$vcmax25_mod * (1/60) * (1/7.16)
+traits_sub$n_rubisco_mod = traits_sub$vcmax25_mod * (1/3500000) * (1/8) * 550000 * .0114 * 14
 traits_sub$n_structure_mod = (10^-2.67) * (traits_sub$lma ^ 0.99)
 hist(traits_sub$n_rubisco_mod)
 hist(traits_sub$n_structure_mod)
@@ -51,6 +62,13 @@ test(emtrends(n_pred_lmer, ~1, var = "n_rubisco_mod"))
 test(emtrends(n_pred_lmer, ~1, var = "n_structure_mod"))
 
 ## make a plot or two
+### partial residual plots
+rub_partial = remef(n_pred_lmer, fix = 'log(n_structure_mod)', ran = 'all')
+plot(rub_partial ~ log(traits_sub$n_rubisco_mod))
+
+str_partial = remef(n_pred_lmer, fix = 'log(n_rubisco_mod)', ran = 'all')
+plot(str_partial ~ log(traits_sub$n_structure_mod))
+
 traits_sub$n_rubisco_structure_mod = traits_sub$n_rubisco_mod + traits_sub$n_structure_mod
 plot(traits_sub$narea ~ traits_sub$n_rubisco_structure_mod) # 
 plot(traits_sub$narea ~ traits_sub$n_rubisco_mod) # not a great relationship
