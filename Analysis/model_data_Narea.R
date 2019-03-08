@@ -132,6 +132,8 @@ plot(resid(n_pred_model_lm) ~ fitted(n_pred_model_lm))
 # test(emtrends(n_pred_model_lm, ~1, var = 'log(n_structure_mod)', at = list(Nfix = 'no')))
 # test(emtrends(n_pred_model_lm, ~1, var = 'log(n_structure_mod)', at = list(Nfix = 'yes')))
 calc.relimp(n_pred_model_lm, rela = T) # 81% structure, 19% rubisco, treatment = 0.03%
+plot(log(narea) ~ log(n_rubisco_mod) , data = subset(traits_sub, Nfix == 'no'))
+plot(log(narea) ~ log(n_structure_mod) , data = subset(traits_sub, Nfix == 'no'))
 
 ### components at the community level
 n_pred_model_com_lm = lm(log(narea_mean) ~ log(n_rubisco_mod_mean) + log(n_structure_mod_mean) + trt, data = traits_sub_site)
