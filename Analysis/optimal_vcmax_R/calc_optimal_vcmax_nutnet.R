@@ -42,7 +42,7 @@ library(R.utils)
 # load necessary functions
 sourceDirectory('functions')
 
-calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, paro = 800, q0 = 0.257, theta = 0.85, dleaf = -28){
+calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, paro = 800, q0 = 0.257, theta = 0.85, chi = 0.7){
 	
 	# constants
 	R <- 8.314
@@ -61,12 +61,12 @@ calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, paro = 800
 	gammastar <- calc_gammastar_pa(tg_c, z)   
 
 	# Coordination and least-cost hypothesis model terms
-	dair = -8
-	delta <- (dair - dleaf) / (1 + dleaf * 0.001)
-	a_delta = 4.4
-	b_delta = 27
-	
-	chi = (delta - a_delta) / (b_delta - a_delta)
+	# dair = -8
+	# delta <- (dair - dleaf) / (1 + dleaf * 0.001)
+	# a_delta = 4.4
+	# b_delta = 27
+	# 
+	# chi = (delta - a_delta) / (b_delta - a_delta)
 	
 	ci <- chi * ca # Pa
 	mc <- ((ci - gammastar) / (ci + km))             # Eq. 6
@@ -84,14 +84,18 @@ calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, paro = 800
 	# jmax_prime <- q0 * par * omega * calc_tresp_mult(tg_c, tg_c, tref <- to)    # Eq. 15 * Eq. 20
 	# jvrat <- jmax_prime/vcmax_prime
 	
+	## Dong et al. (2017) simple vcmax
+	
+	vcmax_simp = 0.093 * par * m * (1 / mc)
+	
 	# output
 	results <- as.data.frame(cbind(tg_c, z, vpdo, cao, paro, q0, theta, par, patm, 
 	                               ca, vpd, chi, ci, km, gammastar, omega, m, mc, 
-	                               omega_star, vcmax_prime, jvrat, jmax_prime, dleaf, b_delta))
+	                               omega_star, vcmax_prime, jvrat, jmax_prime, vcmax_simp))
 	
 	colnames(results) <- c('tg_c', 'z', 'vpdo', 'cao', 'paro', 'q0', 'theta', 'par', 'patm', 'ca', 'vpd', 
 	                       'chi', 'ci', 'km', 'gammastar', 'omega', 'm', 'mc', 'omega_star', 'vcmax_prime', 
-	                       'jvrat', 'jmax_prime', 'dleaf', 'b_delta')
+	                       'jvrat', 'jmax_prime', 'vcmax_simp')
 	
 	results	
 	

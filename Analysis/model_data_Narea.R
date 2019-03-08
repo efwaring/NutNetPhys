@@ -9,6 +9,10 @@ library(lme4)
 library(car)
 devtools::install_github("hohenstein/remef")
 library(remef)
+library(emmeans)
+library(tidyverse)
+library(caret)
+library(relaimpo)
 
 ## load optimal vcmax script (Smith et al., Ecology Letters)
 sourceDirectory('optimal_vcmax_R/functions')
@@ -18,65 +22,127 @@ source('optimal_vcmax_R/calc_optimal_vcmax_nutnet.R')
 traits = read.csv('../Data/leaf_plus.csv')
 head(traits)
 
+## make sure factors are correctly defined
+traits$Ntrt_fac = as.factor(traits$Ntrt_fac)
+traits$Ptrt_fac = as.factor(traits$Ptrt_fac)
+traits$Ktrt_fac = as.factor(traits$Ktrt_fac)
+
+## add in photosynthetic pathway information
+levels(traits$Family) # check Amaranthaceae, Asteraceae, Boraginaceae, Caryophyllaceae, Cyperaceae, Euphorbiaceae,
+# Polygonaceae, Poaceae, Scrophulariaceae
+# only one!
+# C4
+traits$photosynthetic_pathway[traits$photosynthetic_pathway == 'NULL'
+                              & traits$Family == 'Cyperaceae' & traits$Taxon == 'FIMBRISTYLIS DICHOTOMA'] <- 'C4'
+
+traits$photosynthetic_pathway[traits$photosynthetic_pathway == 'NULL'] <- 'C3'
+
+
 ## calculate lma (in g m-2) and narea
-traits$lma = 1 / (traits$SLA * (1 / 1000000)) # conver mm2 g-1 to g m-2
+hist(traits$leaf_area_mm2)
+traits$la_m2 = traits$leaf_area_mm2 * (1/1000000)
+traits$lma = traits$leaf_dry_mass_g / traits$la_m2
 traits$narea = (traits$leaf_pct_N / 100) * (traits$lma)
 hist(traits$lma) # some extremely high values
 hist(traits$narea) # some extremely high values
+hist(traits$la_m2)
+hist(traits$leaf_dry_mass_g) # some very hig values
+hist(subset(traits, leaf_dry_mass_g < 100)$leaf_dry_mass_g)
+
+## some light calculations
+traits$lai = -log(traits$Ground_PAR / traits$Ambient_PAR) / 0.86 # from: http://manuals.decagon.com/Manuals/10242_Accupar%20LP80_Web.pdf page 41
+hist(traits$lai)
+### calculate par per leaf area to assume par absorbed is reduced in dense canopies
+traits$par_per_leaf_area = traits$par * ((1 - exp(-0.5 * traits$lai)) / traits$lai) # from Dong et al. (2007) eqn 2
+hist(traits$par_per_leaf_area)
+hist(traits$Ambient_PAR)
+hist(traits$par)
+hist(((1 - exp(-0.5 * traits$lai)) / traits$lai))
 
 ## remove C4 and values without d13c
-traits_sub = subset(traits, lma < 100000 & photosynthetic_pathway == 'C3' & leaf_C13_delta_PDB != 'NA'
-                    & leaf_C13_delta_PDB < -20)
+traits_sub = subset(traits, lma > 0 & leaf_dry_mass_g < 100 & photosynthetic_pathway == 'C3' & leaf_C13_delta_PDB != 'NA'
+                    & leaf_C13_delta_PDB < -20 & trt != 'Fence' & trt != 'NPK+Fence')
+traits_sub$delta = (-8 - traits_sub$leaf_C13_delta_PDB) / (1 + traits_sub$leaf_C13_delta_PDB * 0.001)
+traits_sub$chi = (traits_sub$delta - 4.4) / (27 - 4.4)
+hist(traits_sub$lma) # some extremely high values
+hist(traits_sub$narea) # some extremely high values
+hist(traits_sub$la_m2)
+hist(traits_sub$leaf_dry_mass_g) # 
+hist(traits_sub$chi) # looks good
 
 ## calculate optimal trait values
-traits_photo = calc_optimal_vcmax(tg_c = traits_sub$tmp, paro = traits_sub$par, cao = 400, 
-                                  vpdo = traits_sub$vpd, z = traits_sub$z, dleaf = traits_sub$leaf_C13_delta_PDB)
-traits_sub$vcmax_mod = as.numeric(as.character(traits_photo$vcmax_prime))
+traits_photo = calc_optimal_vcmax(tg_c = traits_sub$tmp, paro = traits_sub$par_per_leaf_area, cao = 400, 
+                                  vpdo = traits_sub$vpd, z = traits_sub$z, chi = traits_sub$chi)
+traits_sub$vcmax_mod = as.numeric(as.character(traits_photo$vcmax_simp))
 traits_sub$vcmax25_mod = traits_sub$vcmax_mod / calc_tresp_mult(traits_sub$tmp, traits_sub$tmp, 25)
 traits_sub$vcmax25_mod[traits_sub$vcmax25_mod < 0] <- NA
+plot(traits_sub$vcmax25_mod ~ traits_sub$tmp)
 
 ## calculate N from rubisco and structure
-### from Ning Dong: Nrubisco (g per m2) = ((vcmax25 * Mr * nr) / (kcat * Nr)) * Mn
+### from Ning Dong and Harrison et al. (2009): Nrubisco (g per m2) = ((vcmax25 * Mr * nr) / (kcat * Nr)) * Mn
 ### vcmax25 = vcmax at 25C (umol m-2 s-1)
 ### Nr = number of catalytic sites per mole of Rubisco = 8 mol Rubisco site per mol Rubisco
 ### kcat = catalytic turnover at 25C = 3.5 CO2 per mol Rubisco site per second
 ### Mr = molecular mass of Rubisco = 0.55 g Rubisco per umol Rubisco (550000 g Rubisco per mol Rubisco)
 ### nr = N concentration of Rubisco = 11400 mol N per g Rubisco
 ### Mn = molecular mass of N = 14 gN per mol N
-### specific activity of rubisco is 60 umol CO2 gRubisco-1 s-1
-### mass ratio of rubisco is 7.16 gRubisco gNRubisco-1
 ### lma conversion from Dong et al. (2017) Biogeosciences
 traits_sub$n_rubisco_mod = traits_sub$vcmax25_mod * (1/3500000) * (1/8) * 550000 * .0114 * 14
 traits_sub$n_structure_mod = (10^-2.67) * (traits_sub$lma ^ 0.99)
 hist(traits_sub$n_rubisco_mod)
 hist(traits_sub$n_structure_mod)
 
-## compare modeled and observed N
-### first remove very high lma (>1000 g m-2)
-n_pred_lmer = lmer(log(narea) ~ log(n_rubisco_mod) + log(n_structure_mod) + (1|site_code), data = traits_sub)
-Anova(n_pred_lmer)
-summary(n_pred_lmer)
-plot(resid(n_pred_lmer) ~ fitted(n_pred_lmer))
-# cld(emmeans(n_pred_lmer, ~N))
-test(emtrends(n_pred_lmer, ~1, var = "n_rubisco_mod"))
-test(emtrends(n_pred_lmer, ~1, var = "n_structure_mod"))
+## fit some models for N following Dong et al. (2017) but also include fertilization
+### all individuals
+n_pred_all_lm = lm(log(narea) ~ chi + log(par_per_leaf_area) + tmp + log(lma) + Nfix + trt, data = traits_sub)
+summary(n_pred_all_lm) # not much of a chi response
+anova(n_pred_all_lm)
+plot(resid(n_pred_all_lm) ~ fitted(n_pred_all_lm))
+# plot(log(narea) ~ chi + log(par_per_leaf_area) + tmp + log(lma) + Nfix + trt, data = traits_sub)
+emmeans(n_pred_all_lm, ~Nfix)
+cld(emmeans(n_pred_all_lm, ~trt)) # N is highest
+calc.relimp(n_pred_all_lm, rela = T) # lma = 60%, tmp = 26%, par = 1% chi = 12%, trt = 0.2%, Nfix = 2%
 
-## make a plot or two
-### partial residual plots
-rub_partial = remef(n_pred_lmer, fix = 'log(n_structure_mod)', ran = 'all')
-plot(rub_partial ~ log(traits_sub$n_rubisco_mod))
+### community mean
+traits_sub_group_by_site = group_by(subset(traits_sub, Nfix == 'no'), site_code, trt)
+traits_sub_site = summarise(traits_sub_group_by_site, 
+                            narea_mean = mean(narea, na.rm = T), chi_mean = mean(chi, na.rm = T),
+                            tmp_mean = mean(tmp, na.rm = T), lma_mean = mean(lma, na.rm = T),
+                            par_per_leaf_area_mean = mean(par_per_leaf_area, na.rm = T),
+                            n_rubisco_mod_mean = mean(n_rubisco_mod, na.rm = T),
+                            n_structure_mod_mean = mean(n_structure_mod, na.rm = T))
+n_pred_com_lm = lm(log(narea_mean) ~ chi_mean + log(par_per_leaf_area_mean) + tmp_mean + log(lma_mean) + trt,
+                   data = traits_sub_site)
+summary(n_pred_com_lm) # weak chi and par response, but others as expected
+anova(n_pred_com_lm)
+plot(resid(n_pred_com_lm) ~ fitted(n_pred_com_lm))
+# plot(log(narea_mean) ~ chi_mean + log(par_per_leaf_area_mean) + tmp_mean + log(lma_mean) + trt,
+#    data = traits_sub_site)
+cld(emmeans(n_pred_com_lm, ~trt))
+calc.relimp(n_pred_com_lm, rela = T) # lma = 73%, chi = 16%, temp = 9%, par = 2%, treatment = 0.4%
 
-str_partial = remef(n_pred_lmer, fix = 'log(n_rubisco_mod)', ran = 'all')
-plot(str_partial ~ log(traits_sub$n_structure_mod))
+### examining the different components
+# n_pred_model_lm = lm(log(narea) ~ (log(n_rubisco_mod) + log(n_structure_mod)) * Nfix, data = traits_sub)
+n_pred_model_lm = lm(log(narea) ~ log(n_rubisco_mod) + log(n_structure_mod) + trt, data = subset(traits_sub, Nfix == 'no'))
+Anova(n_pred_model_lm)
+summary(n_pred_model_lm)
+plot(resid(n_pred_model_lm) ~ fitted(n_pred_model_lm))
+# plot(log(narea) ~ log(n_rubisco_mod) + log(n_structure_mod) + trt, data = subset(traits_sub, Nfix == 'no'))
+# test(emtrends(n_pred_model_lm, ~1, var = 'log(n_rubisco_mod)', at = list(Nfix = 'no')))
+# test(emtrends(n_pred_model_lm, ~1, var = 'log(n_rubisco_mod)', at = list(Nfix = 'yes')))
+# test(emtrends(n_pred_model_lm, ~1, var = 'log(n_structure_mod)', at = list(Nfix = 'no')))
+# test(emtrends(n_pred_model_lm, ~1, var = 'log(n_structure_mod)', at = list(Nfix = 'yes')))
+calc.relimp(n_pred_model_lm, rela = T) # 81% structure, 19% rubisco, treatment = 0.03%
 
-traits_sub$n_rubisco_structure_mod = traits_sub$n_rubisco_mod + traits_sub$n_structure_mod
-plot(traits_sub$narea ~ traits_sub$n_rubisco_structure_mod) # 
-plot(traits_sub$narea ~ traits_sub$n_rubisco_mod) # not a great relationship
-plot(traits_sub$narea ~ traits_sub$n_structure_mod) # coming mostly from the LMA results
+### components at the community level
+n_pred_model_com_lm = lm(log(narea_mean) ~ log(n_rubisco_mod_mean) + log(n_structure_mod_mean) + trt, data = traits_sub_site)
+Anova(n_pred_model_com_lm)
+summary(n_pred_model_com_lm)
+plot(resid(n_pred_model_com_lm) ~ fitted(n_pred_model_com_lm))
+# plot(log(n_pred_model_com_lm) ~ (log(n_pred_model_com_lm) + log(n_structure_mod_mean)), data = traits_sub_site)
+calc.relimp(n_pred_model_com_lm, rela = T) # 95% structure, 5% rubisco, 0.5% treatment
 
-plot(traits_sub$n_rubisco_mod ~ traits_sub$tmp) # some odd responses
-plot(traits_sub$n_rubisco_mod ~ traits_sub$par)
-plot(traits_sub$n_rubisco_mod ~ traits_sub$vpd)
-plot(traits_sub$n_rubisco_mod ~ traits_sub$leaf_C13_delta_PDB)
+
+
 
 
