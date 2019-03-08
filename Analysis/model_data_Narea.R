@@ -85,6 +85,7 @@ plot(traits_sub$vcmax25_mod ~ traits_sub$tmp)
 ### Mr = molecular mass of Rubisco = 0.55 g Rubisco per umol Rubisco (550000 g Rubisco per mol Rubisco)
 ### nr = N concentration of Rubisco = 11400 mol N per g Rubisco
 ### Mn = molecular mass of N = 14 gN per mol N
+# https://onlinelibrary.wiley.com/doi/full/10.1111/j.1365-3040.2008.01918.x
 ### lma conversion from Dong et al. (2017) Biogeosciences
 traits_sub$n_rubisco_mod = traits_sub$vcmax25_mod * (1/3500000) * (1/8) * 550000 * .0114 * 14
 traits_sub$n_structure_mod = (10^-2.67) * (traits_sub$lma ^ 0.99)
