@@ -87,15 +87,16 @@ calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, paro = 800
 	## Dong et al. (2017) simple vcmax
 	
 	vcmax_simp = 0.093 * par * m * (1 / mc)
+	vcmax25 = vcmax_star / calc_tresp_mult(tg_c, tg_c, tref = 25)
 	
 	# output
 	results <- as.data.frame(cbind(tg_c, z, vpdo, cao, paro, q0, theta, par, patm, 
 	                               ca, vpd, chi, ci, km, gammastar, omega, m, mc, 
-	                               omega_star, vcmax_prime, jvrat, jmax_prime, vcmax_simp))
+	                               omega_star, vcmax_prime, jvrat, jmax_prime, vcmax_simp, vcmax25))
 	
 	colnames(results) <- c('tg_c', 'z', 'vpdo', 'cao', 'paro', 'q0', 'theta', 'par', 'patm', 'ca', 'vpd', 
 	                       'chi', 'ci', 'km', 'gammastar', 'omega', 'm', 'mc', 'omega_star', 'vcmax_prime', 
-	                       'jvrat', 'jmax_prime', 'vcmax_simp')
+	                       'jvrat', 'jmax_prime', 'vcmax_simp', 'vcmax25')
 	
 	results	
 	

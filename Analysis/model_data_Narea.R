@@ -73,8 +73,7 @@ hist(traits_sub$chi) # looks good
 ## calculate optimal trait values
 traits_photo = calc_optimal_vcmax(tg_c = traits_sub$tmp, paro = traits_sub$par_per_leaf_area, cao = 400, 
                                   vpdo = traits_sub$vpd, z = traits_sub$z, chi = traits_sub$chi)
-traits_sub$vcmax_mod = as.numeric(as.character(traits_photo$vcmax_simp))
-traits_sub$vcmax25_mod = traits_sub$vcmax_mod / calc_tresp_mult(traits_sub$tmp, traits_sub$tmp, 25)
+traits_sub$vcmax25_mod = traits_photo$vcmax25
 traits_sub$vcmax25_mod[traits_sub$vcmax25_mod < 0] <- NA
 plot(traits_sub$vcmax25_mod ~ traits_sub$tmp)
 
