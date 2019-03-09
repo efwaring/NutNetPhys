@@ -144,7 +144,27 @@ plot(resid(n_pred_model_com_lm) ~ fitted(n_pred_model_com_lm))
 # plot(log(n_pred_model_com_lm) ~ (log(n_pred_model_com_lm) + log(n_structure_mod_mean)), data = traits_sub_site)
 calc.relimp(n_pred_model_com_lm, rela = T) # 95% structure, 5% rubisco, 0.5% treatment
 
+#############
+# okay do the same thing for %N >> stronger treatment effect
+############
+nper_pred_all_lm = lm(log(leaf_pct_N) ~ chi + log(par_per_leaf_area) + tmp + log(lma) + Nfix + trt, data = traits_sub)
+summary(nper_pred_all_lm) # 
+anova(nper_pred_all_lm)
+plot(resid(nper_pred_all_lm) ~ fitted(nper_pred_all_lm))
+calc.relimp(nper_pred_all_lm, rela = T) # N fixer most important, followed by temperature
 
 
+### components
+traits_sub$sla_m2 = traits_sub$la_m2 / traits_sub$leaf_dry_mass_g
+traits_sub$n_rubisco_mod_pct = traits_sub$n_rubisco_mod * traits_sub$sla_m2
+traits_sub$n_structure_mod_pct = traits_sub$n_structure_mod * traits_sub$sla_m2
+
+n_pred_model_lm_pct = lm(log(leaf_pct_N) ~ log(n_rubisco_mod_pct) + log(n_structure_mod_pct) + trt, data = subset(traits_sub, Nfix == 'no'))
+Anova(n_pred_model_lm_pct)
+summary(n_pred_model_lm_pct)
+plot(resid(n_pred_model_lm_pct) ~ fitted(n_pred_model_lm_pct))
+calc.relimp(n_pred_model_lm_pct, rela = T) # 
+plot(log(leaf_pct_N) ~ log(n_rubisco_mod_pct) , data = subset(traits_sub, Nfix == 'no'))
+plot(log(leaf_pct_N) ~ log(n_structure_mod_pct) , data = subset(traits_sub, Nfix == 'no'))
 
 
