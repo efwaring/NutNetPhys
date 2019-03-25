@@ -3,6 +3,8 @@
 
 ## Note: only works for C3 species
 
+# setwd("/Users/nicksmith/Documents/Git/NutNetPhys/Analysis")
+
 ## load libraries
 library(R.utils)
 library(lme4)
