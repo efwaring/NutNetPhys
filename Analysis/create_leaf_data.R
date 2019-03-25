@@ -66,10 +66,10 @@ nrow(leaf_core) # some core data matches the leaf data twice...
 nrow(leaf_core_spei)
 
 # read in gs climate (>0°C)
-tmp_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_tmp_climExtract_growingseason_globe.csv')
-par_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_par_climExtract_growingseason_globe.csv')
-vpd_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_vpd_climExtract_growingseason_globe.csv')
-z_globe =  read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/z_globe.csv')
+tmp_globe = read.csv('./Analysis/climate_gridded/cru_tmp_climExtract_growingseason_globe.csv')
+par_globe = read.csv('./Analysis/climate_gridded/cru_par_climExtract_growingseason_globe.csv')
+vpd_globe = read.csv('./Analysis/climate_gridded/cru_vpd_climExtract_growingseason_globe.csv')
+z_globe =  read.csv('./Analysis/climate_gridded/z_globe.csv')
 
 leaf_core_spei$tmp = NA
 leaf_core_spei$par = NA
@@ -142,7 +142,7 @@ leaf_core_spei$z = climate_df[, 4]
 ########################################################
 # add species information
 ########################################################
-info = read.csv('../Data/full-species-info-25-January-2019.csv')
+info = read.csv('./Data/full-species-info-25-January-2019.csv')
 code_taxon_data = paste(toupper(leaf_core_spei$site_code), toupper(leaf_core_spei$Taxon), sep = ' ')
 
 info_caps = mutate_all(info, .funs = toupper)
