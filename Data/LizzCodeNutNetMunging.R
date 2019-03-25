@@ -4,9 +4,9 @@ library(tidyr)
 library(nlme)
 
 
-full_biomass<-read.csv("full-biomass-nutrients-06-December-2017.csv")
-comb<- read.csv("comb-by-plot-09-April-2018.csv")
-CRU <-read.csv("CRU-annual_2018-07-06.csv")
+full_biomass<-read.csv("./Data/full-biomass-nutrients-06-December-2017.csv")
+comb<- read.csv("./Data/comb-by-plot-09-April-2018.csv")
+CRU <-read.csv("./Data/CRU-annual_2018-07-06.csv")
 
 comb$proportion_parN <- as.numeric(comb$proportion_par)
 
