@@ -17,7 +17,7 @@ library(ggplot2)
 # read in and modify foliar trait dataset (Jen Firn)
 #########################################
 
-leaf = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')
+leaf = read.csv('./Data/NutNet-foliar-traits-7JAN2017.csv')
 
 leaf[leaf == 'NULL'] <- NA
 
@@ -41,7 +41,7 @@ leaf$Nfix = 'no'
 leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'
 
 # add core data to the dataset
-core = read.csv('../Data/comb-by-plot-09-April-2018.csv')
+core = read.csv('./Data/comb-by-plot-09-April-2018.csv')
 core[core == 'NULL'] <- NA
 
 core[, 26:45] <- sapply(core[, 26:45], as.character)
@@ -55,7 +55,7 @@ leaf_core_data = join(leaf, core_data, by = c("site_code", "year", "block", "plo
 leaf_core = join(leaf_core_data, core_info, by = c("site_code", "block", "plot", "trt"), type = 'left', match = 'first')
 
 # add SPEI to "leaf_core" data
-spei = read.csv('../Data/CRU-annual_2018-07-06.csv')
+spei = read.csv('./Data/CRU-annual_2018-07-06.csv')
 spei$p_pet = spei$precip / spei$PET
 
 leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left', match = 'first')
