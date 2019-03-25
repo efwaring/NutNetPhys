@@ -236,10 +236,10 @@ summary(lm(log(leaf_core_spei$Narea) ~ abs(leaf_core_spei$latitude))) # increase
 # what about with climate?
 
 # read in gs climate (>0°C)
-tmp_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_tmp_climExtract_growingseason_globe.csv')
-par_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_par_climExtract_growingseason_globe.csv')
-vpd_globe = read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/cru_vpd_climExtract_growingseason_globe.csv')
-z_globe =  read.csv('/Users/nicksmith/Dropbox/0Main/Research/Colimitation/Spatial_Maps/z_globe.csv')
+tmp_globe = read.csv('climate_gridded/cru_tmp_climExtract_growingseason_globe.csv')
+par_globe = read.csv('climate_gridded/cru_par_climExtract_growingseason_globe.csv')
+vpd_globe = read.csv('climate_gridded/cru_vpd_climExtract_growingseason_globe.csv')
+z_globe =  read.csv('climate_gridded/z_globe.csv')
 
 leaf_core_spei$tmp = NA
 leaf_core_spei$par = NA
