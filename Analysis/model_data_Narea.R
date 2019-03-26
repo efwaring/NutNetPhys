@@ -9,6 +9,8 @@
 library(R.utils)
 library(lme4)
 library(car)
+# install.packages("devtools")
+library(devtools)
 devtools::install_github("hohenstein/remef")
 library(remef)
 library(emmeans)
@@ -17,11 +19,11 @@ library(caret)
 library(relaimpo)
 
 ## load optimal vcmax script (Smith et al., Ecology Letters)
-sourceDirectory('optimal_vcmax_R/functions')
-source('optimal_vcmax_R/calc_optimal_vcmax_nutnet.R')
+
+source('./Analysis/optimal_vcmax_R/calc_optimal_vcmax_nutnet.R')
 
 ## load observational data
-traits = read.csv('../Data/leaf_plus.csv')
+traits = read.csv('./Data/leaf_plus.csv')
 head(traits)
 
 ## make sure factors are correctly defined
@@ -74,7 +76,7 @@ hist(traits_sub$chi) # looks good
 
 ## calculate optimal trait values
 traits_photo = calc_optimal_vcmax(tg_c = traits_sub$tmp, paro = traits_sub$par_per_leaf_area, cao = 400, 
-                                  vpdo = traits_sub$vpd, z = traits_sub$z, chi = traits_sub$chi)
+                                  vpdo = traits_sub$vpd, z = traits_sub$z,chi = traits_sub$chi)
 traits_sub$vcmax25_mod = traits_photo$vcmax25
 traits_sub$vcmax25_mod[traits_sub$vcmax25_mod < 0] <- NA
 plot(traits_sub$vcmax25_mod ~ traits_sub$tmp)
