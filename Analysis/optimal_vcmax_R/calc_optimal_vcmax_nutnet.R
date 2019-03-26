@@ -40,7 +40,8 @@
 library(R.utils)
 
 # load necessary functions
-sourceDirectory('functions')
+
+list.files("./Analysis/optimal_vcmax_R/functions", full.names = TRUE) %>% walk(source)
 
 calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, paro = 800, q0 = 0.257, theta = 0.85, chi = 0.7){
 	
