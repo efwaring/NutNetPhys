@@ -99,27 +99,21 @@ summary(lm_deltaN)
 # Let's make some plots
 #########################################
 
-# N fert effect on Narea
-par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
-leafNarea_lmer_sum = summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Nfix))
-leafNarea_boxplot = boxplot(log(subset(biomass_core_spei, Ntrt_fac == '0' & Nfix == 'no')$Narea), log(subset(biomass_core_spei, Ntrt_fac == '1' & Nfix == 'no')$Narea), log(subset(biomass_core_spei, Ntrt_fac == '0' & Nfix == 'yes')$Narea), log(subset(biomass_core_spei, Ntrt_fac == '1' & Nfix == 'yes')$Narea), ylim = c(-20, 0), yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', col = c('white', 'white', 'yellow', 'yellow'))
-points(leafNarea_lmer_sum[,3], pch = 16, col = c('purple', 'purple', 'red', 'red'), cex = 2)
-segments(seq(1, 4, 1), leafNarea_lmer_sum[,3] + leafNarea_lmer_sum[,4] * 1.96, seq(1, 4, 1), leafNarea_lmer_sum[,3] - leafNarea_lmer_sum[,4] * 1.96, col = c('purple', 'purple', 'red', 'red'), lwd = 6)
-axis(1, at = seq(1, 4, 1), c("-N", '+N', '-N', '+N'), cex.axis = 2)
-text(1.5, 0, 'non-fixers', cex = 2)
-text(3.5, 0, 'N-fixers', cex = 2)
-axis(2, seq(-20, 0, 5), cex.axis = 2, las = 1)
-mtext(side = 2, 'log(Narea)', cex = 3, line = 5)
+# N fert effect on AGN
+
+ggplot(biomass_core_spei, aes(Ntrt_fac,AGN, color=Nfix))+
+         geom_violin() +
+  scale_y_continuous(limits=c(0,5000))
 
 # climate effect on ∆N
 par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
 palette = colorRampPalette(brewer.pal(9,'Blues'))
-p_pet_cols <- palette(9)[as.numeric(cut(leaf_core_spei_nofix_mean_nN$p_pet_Mean,breaks = 9))]
-plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = p_pet_cols,  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 100))
+p_pet_cols <- palette(9)[as.numeric(cut(biomass_core_spei_nofix_mean_nN$p_pet_Mean,breaks = 9))]
+plot(deltaN ~ biomass_core_spei_nofix_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = p_pet_cols,  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 300))
 axis(1, seq(0, 1, 0.2), cex.axis = 2)
-axis(2, seq(-100, 100, 50), cex.axis = 2, las = 1)
+axis(2, seq(-100, 300, 50), cex.axis = 2, las = 1)
 mtext(side = 1, 'Light interception', line = 4, cex = 3)
-mtext(side = 2, '∆Narea', line = 5, cex = 3)
+mtext(side = 2, '∆AGN', line = 5, cex = 3)
 
 # mean(deltaNarea, na.rm = T) # 12.1
 # (sd(deltaNarea, na.rm = T) / sqrt(25)) * 1.96 # 10.8
