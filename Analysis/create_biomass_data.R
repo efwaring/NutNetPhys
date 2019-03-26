@@ -38,7 +38,7 @@ full_biomass$Ktrt_fac = as.factor(full_biomass$Ktrt)
 full_biomass$AGN <- full_biomass$mass*(full_biomass$pct_N*0.01)
 
 full_biomass$Nfix = 'no'
-full_biomass$Nfix[full_biomass$Family == 'Fabaceae'] = 'yes'
+full_biomass$Nfix[full_biomass$category == 'LEGUME'] = 'yes'
 
 # add core data to the dataset
 core = read.csv('./Data/comb-by-plot-09-April-2018.csv')
