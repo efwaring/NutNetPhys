@@ -101,9 +101,22 @@ summary(lm_deltaN)
 
 # N fert effect on AGN
 
-ggplot(biomass_core_spei, aes(Ntrt_fac,AGN, color=Nfix))+
-         geom_violin() +
-  scale_y_continuous(limits=c(0,5000))
+par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
+AGN_full_lmer = summary(emmeans(AGN_full_lmer, ~Ntrt_fac * Nfix))
+leafNarea_boxplot = boxplot(log(subset(biomass_core_spei, Ntrt_fac == '0' & Nfix == 'no')$AGN),
+                            log(subset(biomass_core_spei, Ntrt_fac == '1' & Nfix == 'no')$AGN),
+                            log(subset(biomass_core_spei, Ntrt_fac == '0' & Nfix == 'yes')$AGN),
+                            log(subset(biomass_core_spei, Ntrt_fac == '1' & Nfix == 'yes')$AGN),
+                            ylim = c(0, 3000), yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', col = c('white', 'white', 'yellow', 'yellow'))
+points(AGN_full_lmer[,3], pch = 16, col = c('purple', 'purple', 'red', 'red'), cex = 2)
+segments(seq(1, 4, 1), AGN_full_lmer[,3] + AGN_full_lmer[,4] * 1.96, seq(1, 4, 1), 
+         AGN_full_lmer[,3] - AGN_full_lmer[,4] * 1.96, col = c('purple', 'purple', 'red', 'red'),
+         lwd = 6)
+axis(1, at = seq(1, 4, 1), c("-N", '+N', '-N', '+N'), cex.axis = 2)
+text(1.5, 2500, 'non-fixers', cex = 2)
+text(3.5, 2500, 'N-fixers', cex = 2)
+axis(2, seq(0, 3000, 500), cex.axis = 2, las = 1)
+mtext(side = 2, 'AGN', cex = 3, line = 5)
 
 # climate effect on ∆N
 par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
