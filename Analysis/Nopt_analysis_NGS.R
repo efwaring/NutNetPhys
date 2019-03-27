@@ -19,49 +19,7 @@ library(RColorBrewer)
 # read in and modify foliar trait dataset (Jen Firn)
 #########################################
 
-leaf = read.csv('/Users/nicksmith/Dropbox/NutNet_meeting_2018/Nopt_analyses/Data/NutNet-foliar-traits-7JAN2017.csv')
-
-leaf[leaf == 'NULL'] <- NA
-
-leaf[, 8:30] <- sapply(leaf[, 8:30], as.character)
-leaf[, 8:30] <- sapply(leaf[, 8:30], as.numeric)
-
-leaf$Ntrt = 0
-leaf$Ntrt[leaf$trt == 'N' | leaf$trt == 'NP' | leaf$trt == 'NK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1
-leaf$Ptrt = 0
-leaf$Ptrt[leaf$trt == 'P' | leaf$trt == 'NP' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1
-leaf$Ktrt = 0
-leaf$Ktrt[leaf$trt == 'K' | leaf$trt == 'NK' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1
-
-leaf$Ntrt_fac = as.factor(leaf$Ntrt)
-leaf$Ptrt_fac = as.factor(leaf$Ptrt)
-leaf$Ktrt_fac = as.factor(leaf$Ktrt)
-
-leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)
-
-leaf$Nfix = 'no'
-leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'
-
-# add core data to the dataset
-core = read.csv('/Users/nicksmith/Dropbox/NutNet_meeting_2018/Nopt_analyses/Data/comb-by-plot-09-April-2018.csv')
-core[core == 'NULL'] <- NA
-
-core[, 26:45] <- sapply(core[, 26:45], as.character)
-core[, 26:45] <- sapply(core[, 26:45], as.numeric)
-
-core$par_rat = core$Ground_PAR / core$Ambient_PAR
-leaf_core = join(leaf, core, by = c("site_code", "year", "block", "plot", "trt"), type = 'left', match = 'first')
-
-# add SPEI to "leaf_core" data
-spei = read.csv('/Users/nicksmith/Dropbox/NutNet_meeting_2018/Nopt_analyses/Data/CRU-annual_2018-07-06.csv')
-spei$p_pet = spei$precip / spei$PET
-
-leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left', match = 'first')
-
-# check
-nrow(leaf)
-nrow(leaf_core) # some core data matches the leaf data twice...
-nrow(leaf_core_spei)
+source("./Analysis/create_leaf_data.R")
 
 #########################################
 # Q1: does leaf N differ amongst treatments
@@ -90,9 +48,22 @@ plot(resid(SLA_lmer) ~ fitted(SLA_lmer))
 Anova(SLA_lmer)
 cld(emmeans(SLA_lmer, ~Ntrt_fac)) # (~1% increase)
 
+
+
+#########################################################################################
+# same Q looking at mass basis
+###########################################################################################
+
+hist(leaf$Nmass)
+hist(log(leaf$Nmass))
+leafNmass_lmer = lmer(log(Nmass) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + p_pet + (1|site_code) + (1|Family) + (1|Taxon) + (1|site_code:Family) + (1|site_code:Taxon), data = leaf_core_spei)
+plot(resid(leafNmass_lmer) ~ fitted(leafNmass_lmer))
+Anova(leafNmass_lmer)
+cld(emmeans(leafNmass_lmer, ~Ntrt_fac)) #~overall increase of 13%
+cld(emmeans(leafNmass_lmer, ~Ntrt_fac * Nfix)) # ~60% increase in non-N fixers
 #########################################
 # A1: yes, N is a little higher (P < 0.001), however the actual effect is quite small (2%). No effect with N fixers. SLA is slightly increased with soil N as well (1%). PLants seem to be "moderately" building larger, higher N leaves with N...not a big effect
-# 
+#  Leaf N on a mass basis increases substantically (60%)
 #########################################
 
 #########################################
@@ -119,19 +90,26 @@ nrow(leaf_core_spei_nofix_mean_nN)
 deltaNper = ((leaf_core_spei_nofix_mean_yN$leaf_pct_N_Mean - leaf_core_spei_nofix_mean_nN$leaf_pct_N_Mean) / leaf_core_spei_nofix_mean_nN$leaf_pct_N_Mean) * 100
 
 deltaNarea = ((leaf_core_spei_nofix_mean_yN$Narea_Mean - leaf_core_spei_nofix_mean_nN$Narea_Mean) / leaf_core_spei_nofix_mean_nN$Narea_Mean) * 100
+deltaNmass = ((leaf_core_spei_nofix_mean_yN$Nmass_Mean - leaf_core_spei_nofix_mean_nN$Nmass_Mean) / leaf_core_spei_nofix_mean_nN$Nmass_Mean) * 100
 
 summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
 summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
-summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
-summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
+summary(lm(deltaNmass ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
+
+summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)) # nothing
+summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)) # nothing
+summary(lm(deltaNmass ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)) # nothing
 
 plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)
 plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)
+plot(deltaNmass ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)
 plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
 plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
+plot(deltaNmass ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
 
 summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)) # nothing
 summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)) # nothing
+summary(lm(deltaNmass ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)) #nothing
 
 plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
 plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
@@ -139,6 +117,11 @@ plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
 lm_deltaNarea = lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean * leaf_core_spei_nofix_mean_nN$par_rat_Mean)
 anova(lm_deltaNarea)
 summary(lm_deltaNarea)
+
+
+lm_deltaNmass = lm(deltaNmass ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean * leaf_core_spei_nofix_mean_nN$par_rat_Mean)
+anova(lm_deltaNmass)
+summary(lm_deltaNmass)
 
 #########################################
 # A2: does the change in leaf N differ across climates? nope, not really! basically no change regardless of site/climate
