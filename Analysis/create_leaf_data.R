@@ -36,6 +36,7 @@ leaf$Ptrt_fac = as.factor(leaf$Ptrt)
 leaf$Ktrt_fac = as.factor(leaf$Ktrt)
 
 leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)
+leaf$Nmass = ((leaf$leaf_pct_N/100) * leaf$leaf_dry_mass_g) *1000 # puts in mg/g N
 
 leaf$Nfix = 'no'
 leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'
