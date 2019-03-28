@@ -20,10 +20,11 @@ library(relaimpo)
 
 ## load optimal vcmax script (Smith et al., Ecology Letters)
 
-source('./Analysis/optimal_vcmax_R/calc_optimal_vcmax_nutnet.R')
+source('optimal_vcmax_R/calc_optimal_vcmax_nutnet.R')
+sourceDirectory('optimal_vcmax_R/functions')
 
 ## load observational data
-traits = read.csv('./Data/leaf_plus.csv')
+traits = read.csv('../Data/leaf_plus.csv')
 head(traits)
 
 ## make sure factors are correctly defined
@@ -49,6 +50,7 @@ traits$lma = traits$leaf_dry_mass_g / traits$la_m2
 traits$narea = (traits$leaf_pct_N / 100) * (traits$lma)
 hist(traits$lma) # some extremely high values
 hist(traits$narea) # some extremely high values
+hist(traits$SLA)
 hist(traits$la_m2)
 hist(traits$leaf_dry_mass_g) # some very hig values
 hist(subset(traits, leaf_dry_mass_g < 100)$leaf_dry_mass_g)
@@ -155,7 +157,7 @@ nper_pred_all_lm = lm(log(leaf_pct_N) ~ chi + log(par_per_leaf_area) + tmp + log
 summary(nper_pred_all_lm) # 
 anova(nper_pred_all_lm)
 plot(resid(nper_pred_all_lm) ~ fitted(nper_pred_all_lm))
-calc.relimp(nper_pred_all_lm, rela = T) # N fixer most important, followed by temperature
+calc.relimp(nper_pred_all_lm, rela = T) # N fixer most important, followed by temperature, treatment = 10%
 
 
 ### components
