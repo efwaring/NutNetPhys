@@ -19,14 +19,15 @@ library(afex)
 #########################################
 # read in and modify biomass data
 #########################################
-source("./Analysis/create_biomass_data.R")
+source("./Analysis/filter_sites.R")
 
 #########################################
 # Q1: does Above ground N differ amongst treatments
 #########################################
 
 hist(biomass_core_spei$AGN)
-AGN_mixed = lmer(AGN ~ Ntrt_fac * Nfix+ p_pet + (1|site_code) + (1|category) ,
+hist(log10(biomass_core_spei$AGN))
+AGN_mixed = lmer(log10(AGN) ~ Ntrt_fac * Nfix+ p_pet + (1|site_code) + (1|category) ,
                 data = biomass_core_spei)
 plot(resid(AGN_mixed) ~ fitted(AGN_mixed))
 Anova(AGN_mixed)
@@ -34,7 +35,7 @@ emmeans(AGN_mixed, ~Ntrt_fac)
 cld(emmeans(AGN_mixed, ~Ntrt_fac * Nfix))
 
 hist(full_biomass$AGN)
-AGN_full_lmer = lmer(AGN ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + p_pet + (1|site_code) + (1|category) + (1|site_code:category), data = biomass_core_spei)
+AGN_full_lmer = lmer(log10(AGN) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + p_pet + (1|site_code) + (1|category) + (1|site_code:category), data = biomass_core_spei)
 plot(resid(AGN_full_lmer) ~ fitted(AGN_full_lmer))
 Anova(AGN_full_lmer)
 cld(emmeans(AGN_full_lmer, ~Ntrt_fac))
@@ -43,7 +44,7 @@ cld(emmeans(AGN_full_lmer, ~Ntrt_fac * Nfix))
 
 
 #########################################
-# A1: Yes, unsurpringinly AGN increases with treatments, no effect of legumes
+# A1: Yes, unsurpringinly AGN increases with treatments, Legumes increase the total AGN
 # 
 #########################################
 
