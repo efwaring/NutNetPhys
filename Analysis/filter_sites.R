@@ -14,6 +14,8 @@ leaf_core_spei <- filter(biomass_core_spei, site_code %in% overlap)
 
 full_biomass <- filter(full_biomass, site_code %in% overlap)
 
+leaf <- filter(leaf, site_code %in% overlap)
+
 #test that they all match
 
 biomass_core_spei$site_code %in% overlap
