@@ -27,6 +27,11 @@ sourceDirectory('optimal_vcmax_R/functions')
 traits = read.csv('../Data/leaf_plus.csv')
 head(traits)
 
+## fiter by overlapping sites
+source('filer_sites.R')
+
+traits = filter(traits, site_code %in% overlap)
+
 ## make sure factors are correctly defined
 traits$Ntrt_fac = as.factor(traits$Ntrt_fac)
 traits$Ptrt_fac = as.factor(traits$Ptrt_fac)
