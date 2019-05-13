@@ -4,6 +4,8 @@
 #
 # General strategy: ask questions sequentially from least to most complex
 
+setwd("/Users/nicksmith/Documents/Git/NutNetPhys/Analysis")
+
 #########################################
 # packages necessary
 #########################################
@@ -137,7 +139,7 @@ summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)) # nothin
 plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
 plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
 
-lm_deltaNarea = lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean * leaf_core_spei_nofix_mean_nN$par_rat_Mean)
+lm_deltaNarea = lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
 anova(lm_deltaNarea)
 summary(lm_deltaNarea)
 
@@ -145,6 +147,18 @@ summary(lm_deltaNarea)
 # A2: does the change in leaf N differ across climates? nope, not really! basically no change regardless of site/climate
 #########################################
 
+deltaNarea_line = summary(lm_deltaNarea)$coefficients[1, 1] + summary(lm_deltaNarea)$coefficients[2, 1] * seq(0, 1, 0.1)
+
+par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
+palette = colorRampPalette(brewer.pal(9,'Blues'))
+#p_pet_cols <- palette(9)[as.numeric(cut(biomass_core_spei_nofix_mean_nN$p_pet_Mean,breaks = 9))]
+plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = 'blue',  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 300))
+axis(1, seq(0, 1, 0.2), cex.axis = 2)
+axis(2, seq(-100, 300, 100), cex.axis = 2, las = 1)
+mtext(side = 1, 'Light interception', line = 4, cex = 2)
+mtext(side = 2, '∆N per leaf area (%)', line = 5, cex = 2)
+lines(deltaNarea_line ~ seq(0, 1, 0.1), lwd = 4)
+text(0.5, 290, 'p = 0.35; mean = +12%', cex = 1.8)
 
 #########################################
 # Q3: does plot N differ among treatments?

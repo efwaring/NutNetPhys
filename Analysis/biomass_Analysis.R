@@ -4,6 +4,8 @@
 #
 # General strategy: ask questions sequentially from least to most complex
 
+setwd("/Users/nicksmith/Documents/Git/NutNetPhys")
+
 #########################################
 # packages necessary
 #########################################
@@ -35,7 +37,8 @@ emmeans(AGN_mixed, ~Ntrt_fac)
 cld(emmeans(AGN_mixed, ~Ntrt_fac * Nfix))
 
 hist(full_biomass$AGN)
-AGN_full_lmer = lmer(log10(AGN) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + p_pet + (1|site_code) + (1|category) + (1|site_code:category), data = biomass_core_spei)
+AGN_full_lmer = lmer(log10(AGN) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + p_pet + 
+                       (1|site_code) + (1|category) + (1|site_code:category), data = biomass_core_spei)
 plot(resid(AGN_full_lmer) ~ fitted(AGN_full_lmer))
 Anova(AGN_full_lmer)
 cld(emmeans(AGN_full_lmer, ~Ntrt_fac))
@@ -86,7 +89,7 @@ summary(lm(deltaN ~ biomass_core_spei_nofix_mean_yN$precip.mean_Mean)) # nothing
 plot(deltaN ~ biomass_core_spei_nofix_mean_nN$precip.mean_Mean)
 plot(deltaN ~ biomass_core_spei_nofix_mean_nN$precip.mean_Mean)
 
-lm_deltaN = lm(deltaN ~ biomass_core_spei_nofix_mean_nN$p_pet_Mean * biomass_core_spei_nofix_mean_nN$par_rat_Mean)
+lm_deltaN = lm(deltaN ~ biomass_core_spei_nofix_mean_nN$par_rat_Mean)
 anova(lm_deltaN)
 summary(lm_deltaN)
 
@@ -120,14 +123,19 @@ axis(2, seq(0, 3000, 500), cex.axis = 2, las = 1)
 mtext(side = 2, 'AGN', cex = 3, line = 5)
 
 # climate effect on ∆N
+
+deltaN_line = summary(lm_deltaN)$coefficients[1, 1] + summary(lm_deltaN)$coefficients[2, 1] * seq(0, 1, 0.1)
+
 par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
 palette = colorRampPalette(brewer.pal(9,'Blues'))
-p_pet_cols <- palette(9)[as.numeric(cut(biomass_core_spei_nofix_mean_nN$p_pet_Mean,breaks = 9))]
-plot(deltaN ~ biomass_core_spei_nofix_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = p_pet_cols,  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 300))
+#p_pet_cols <- palette(9)[as.numeric(cut(biomass_core_spei_nofix_mean_nN$p_pet_Mean,breaks = 9))]
+plot(deltaN ~ biomass_core_spei_nofix_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = 'blue',  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 300))
 axis(1, seq(0, 1, 0.2), cex.axis = 2)
-axis(2, seq(-100, 300, 50), cex.axis = 2, las = 1)
-mtext(side = 1, 'Light interception', line = 4, cex = 3)
-mtext(side = 2, '∆AGN', line = 5, cex = 3)
+axis(2, seq(-100, 300, 100), cex.axis = 2, las = 1)
+mtext(side = 1, 'Light interception', line = 4, cex = 2)
+mtext(side = 2, '∆N per ground area (%)', line = 5, cex = 2)
+lines(deltaN_line ~ seq(0, 1, 0.1), lwd = 4)
+text(0.5, 290, 'p = 0.15; mean = +80%', cex = 1.8)
 
 # mean(deltaNarea, na.rm = T) # 12.1
 # (sd(deltaNarea, na.rm = T) / sqrt(25)) * 1.96 # 10.8

@@ -134,7 +134,7 @@ calc.relimp(n_pred_com_lm, rela = T) # lma = 73%, chi = 16%, temp = 9%, par = 2%
 
 ### examining the different components
 # n_pred_model_lm = lm(log(narea) ~ (log(n_rubisco_mod) + log(n_structure_mod)) * Nfix, data = traits_sub)
-n_pred_model_lm = lm(log(narea) ~ log(n_rubisco_mod) + log(n_structure_mod) + trt, data = subset(traits_sub, Nfix == 'no'))
+n_pred_model_lm = lm(log(narea) ~ log(n_rubisco_mod) + log(n_structure_mod) + Nfix + trt, data = traits_sub)
 Anova(n_pred_model_lm)
 summary(n_pred_model_lm)
 plot(resid(n_pred_model_lm) ~ fitted(n_pred_model_lm))
