@@ -28,7 +28,7 @@ traits = read.csv('../Data/leaf_plus.csv')
 head(traits)
 
 ## fiter by overlapping sites
-source('filer_sites.R')
+source('filter_sites.R')
 
 traits = filter(traits, site_code %in% overlap)
 
