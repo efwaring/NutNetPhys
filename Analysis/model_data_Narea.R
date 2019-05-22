@@ -17,6 +17,7 @@ library(emmeans)
 library(tidyverse)
 library(caret)
 library(relaimpo)
+library(treemapify)
 
 ## load optimal vcmax script (Smith et al., Ecology Letters)
 
@@ -143,7 +144,7 @@ plot(resid(n_pred_model_lm) ~ fitted(n_pred_model_lm))
 # test(emtrends(n_pred_model_lm, ~1, var = 'log(n_rubisco_mod)', at = list(Nfix = 'yes')))
 # test(emtrends(n_pred_model_lm, ~1, var = 'log(n_structure_mod)', at = list(Nfix = 'no')))
 # test(emtrends(n_pred_model_lm, ~1, var = 'log(n_structure_mod)', at = list(Nfix = 'yes')))
-calc.relimp(n_pred_model_lm, rela = T) # 81% structure, 19% rubisco, treatment = 0.03%
+calc.relimp(n_pred_model_lm, rela = T) # 76% structure, 20% rubisco, treatment = 0.3%
 plot(log(narea) ~ log(n_rubisco_mod) , data = subset(traits_sub, Nfix == 'no'))
 plot(log(narea) ~ log(n_structure_mod) , data = subset(traits_sub, Nfix == 'no'))
 
@@ -177,5 +178,27 @@ plot(resid(n_pred_model_lm_pct) ~ fitted(n_pred_model_lm_pct))
 calc.relimp(n_pred_model_lm_pct, rela = T) # 
 plot(log(leaf_pct_N) ~ log(n_rubisco_mod_pct) , data = subset(traits_sub, Nfix == 'no'))
 plot(log(leaf_pct_N) ~ log(n_structure_mod_pct) , data = subset(traits_sub, Nfix == 'no'))
+
+
+############################
+# make some plots
+############################
+
+relimp_leafn = calc.relimp(n_pred_all_lm, rela = F)$lmg
+
+relimp_leafn_df = NULL
+relimp_leafn_df$Factor = c('Soil N', 'Ci/Ca', 'Light', 'Temperature', 'LMA', 'Legume')
+relimp_leafn_df$Importance = as.numeric(as.character(c(relimp_leafn)))
+relimp_leafn_df = as.data.frame(relimp_leafn_df)
+unexplained = 1 - sum(relimp_leafn_df$Importance)
+unexplained_df = data.frame("Unexplained", unexplained)
+names(unexplained_df) = c("Factor", "Importance")
+relimp_leafn_df = rbind(relimp_leafn_df, unexplained_df)
+
+ggplot(relimp_leafn_df, aes(area = Importance, label = Factor)) +
+  geom_treemap(fill = c('brown', 'blue', 'yellow', 'red', 'grey', 'orange', 'white'), colour = 'black') +
+  geom_treemap_text(colour = "black", place = "centre",
+                    grow = TRUE)
+
 
 
