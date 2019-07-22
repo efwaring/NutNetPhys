@@ -116,13 +116,15 @@ cld(emmeans(n_pred_all_lm, ~trt)) # N is highest
 calc.relimp(n_pred_all_lm, rela = T) # lma = 60%, tmp = 26%, par = 1% chi = 12%, trt = 0.2%, Nfix = 2%
 
 ### community mean
-traits_sub_group_by_site = group_by(subset(traits_sub, Nfix == 'no'), site_code, trt)
+traits_sub_group_by_site = group_by(subset(traits_sub, Nfix == 'no'), site_code, trt,
+                                    Ntrt_fac, Ptrt_fac, Ktrt_fac)
 traits_sub_site = summarise(traits_sub_group_by_site, 
                             narea_mean = mean(narea, na.rm = T), chi_mean = mean(chi, na.rm = T),
                             tmp_mean = mean(tmp, na.rm = T), lma_mean = mean(lma, na.rm = T),
                             par_per_leaf_area_mean = mean(par_per_leaf_area, na.rm = T),
                             n_rubisco_mod_mean = mean(n_rubisco_mod, na.rm = T),
-                            n_structure_mod_mean = mean(n_structure_mod, na.rm = T))
+                            n_structure_mod_mean = mean(n_structure_mod, na.rm = T),
+                            lai_mean = mean(lai, na.rm = T))
 n_pred_com_lm = lm(log(narea_mean) ~ chi_mean + log(par_per_leaf_area_mean) + tmp_mean + log(lma_mean) + trt,
                    data = traits_sub_site)
 summary(n_pred_com_lm) # weak chi and par response, but others as expected
@@ -199,6 +201,48 @@ ggplot(relimp_leafn_df, aes(area = Importance, label = Factor)) +
   geom_treemap(fill = c('brown', 'blue', 'yellow', 'red', 'grey', 'orange', 'white'), colour = 'black') +
   geom_treemap_text(colour = "black", place = "centre",
                     grow = TRUE)
+
+
+###########
+lai_trt_lm = lm(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac, data = traits_sub_site)
+anova(lai_trt_lm)
+emmeans(lai_trt_lm, ~Ntrt_fac)
+(exp(summary(emmeans(lai_trt_lm, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(lai_trt_lm, ~Ntrt_fac))[1,2])) /exp(summary(emmeans(lai_trt_lm, ~Ntrt_fac))[1,2])
+
+narea_trt_lm = lm(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac, data = traits_sub)
+anova(narea_trt_lm)
+emmeans(narea_trt_lm, ~Ntrt_fac)
+
+narea_Ntrt_plot = ggplot(data = traits_sub, aes(x = Ntrt_fac, y = log(narea))) +
+  theme(legend.position = "none", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_boxplot(outlier.color = NA, fill = 'white') +
+  geom_dotplot(binaxis = 'y', binwidth = 0.05, stackdir = 'center', alpha = 0.2) +
+  scale_x_discrete(labels = c('ambient', 'added N')) +
+  xlab('Nitrogen treatment') +
+  ylab(expression('Log leaf N (g m'^'-2' * ')'))
+
+lai_Ntrt_plot = ggplot(data = traits_sub_site, aes(x = Ntrt_fac, y = (lai_mean))) +
+  theme(legend.position = "none", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_boxplot(outlier.color = NA, fill = 'white') +
+  geom_dotplot(binaxis = 'y', binwidth = 0.05, stackdir = 'center', alpha = 0.2) +
+  scale_x_discrete(labels = c('ambient', 'added N')) +
+  xlab('Nitrogen treatment') +
+  ylab(expression('Leaf area index (m'^'-2' * 'm'^'-2' * ')'))
+
+
+
 
 
 
