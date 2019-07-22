@@ -225,7 +225,7 @@ narea_Ntrt_plot = ggplot(data = traits_sub, aes(x = Ntrt_fac, y = log(narea))) +
   geom_dotplot(binaxis = 'y', binwidth = 0.05, stackdir = 'center', alpha = 0.2) +
   scale_x_discrete(labels = c('ambient', 'added N')) +
   xlab('Nitrogen treatment') +
-  ylab(expression('Log leaf N (g m'^'-2' * ')'))
+  ylab(expression('Log leaf nitrogen (g m'^'-2' * ')'))
 
 lai_Ntrt_plot = ggplot(data = traits_sub_site, aes(x = Ntrt_fac, y = (lai_mean))) +
   theme(legend.position = "none", 
@@ -239,7 +239,7 @@ lai_Ntrt_plot = ggplot(data = traits_sub_site, aes(x = Ntrt_fac, y = (lai_mean))
   geom_dotplot(binaxis = 'y', binwidth = 0.05, stackdir = 'center', alpha = 0.2) +
   scale_x_discrete(labels = c('ambient', 'added N')) +
   xlab('Nitrogen treatment') +
-  ylab(expression('Leaf area index (m'^'-2' * 'm'^'-2' * ')'))
+  ylab(expression('Leaf area index (m'^'-2' * ' m'^'-2' * ')'))
 
 
 
