@@ -124,7 +124,8 @@ traits_sub_site = summarise(traits_sub_group_by_site,
                             par_per_leaf_area_mean = mean(par_per_leaf_area, na.rm = T),
                             n_rubisco_mod_mean = mean(n_rubisco_mod, na.rm = T),
                             n_structure_mod_mean = mean(n_structure_mod, na.rm = T),
-                            lai_mean = mean(lai, na.rm = T))
+                            lai_mean = mean(lai, na.rm = T),
+                            p_pet_mean = mean(p_pet, na.rm = T))
 n_pred_com_lm = lm(log(narea_mean) ~ chi_mean + log(par_per_leaf_area_mean) + tmp_mean + log(lma_mean) + trt,
                    data = traits_sub_site)
 summary(n_pred_com_lm) # weak chi and par response, but others as expected
@@ -204,16 +205,38 @@ ggplot(relimp_leafn_df, aes(area = Importance, label = Factor)) +
 
 
 ###########
-lai_trt_lm = lm(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac, data = traits_sub_site)
+lai_trt_lm = lm(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + p_pet_mean +
+                  tmp_mean, data = traits_sub_site)
 anova(lai_trt_lm)
 emmeans(lai_trt_lm, ~Ntrt_fac)
 (exp(summary(emmeans(lai_trt_lm, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(lai_trt_lm, ~Ntrt_fac))[1,2])) /exp(summary(emmeans(lai_trt_lm, ~Ntrt_fac))[1,2])
 
-narea_trt_lm = lm(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac, data = traits_sub)
+narea_trt_lm = lm(log(narea_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + p_pet_mean +
+                    tmp_mean, data = traits_sub_site)
 anova(narea_trt_lm)
 emmeans(narea_trt_lm, ~Ntrt_fac)
 
-narea_Ntrt_plot = ggplot(data = traits_sub, aes(x = Ntrt_fac, y = log(narea))) +
+chi_trt_lm = lm((chi_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + p_pet_mean +
+                  tmp_mean, data = traits_sub_site)
+anova(chi_trt_lm)
+emmeans(chi_trt_lm, ~Ntrt_fac)
+plot(resid(chi_trt_lm) ~ fitted(chi_trt_lm))
+
+narea_chi_plot = ggplot(data = subset(traits_sub_site, Ptrt_fac == '0' & Ktrt_fac == '0'), 
+                        aes(x = (chi_mean), y = log(narea_mean), colour = Ntrt_fac)) +
+  theme(legend.position = "none", 
+        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+        axis.text.x=element_text(size=rel(2), colour = 'black'),
+        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "grey")) +
+  geom_point(aes(shape = Ntrt_fac), size = 4) +
+  scale_color_manual(values = c('grey', 'black')) +
+  ylab(expression('Log leaf nitrogen (g m'^'-2' * ')')) +
+  xlab(expression('C'[i] * '/C'[a]))
+
+narea_Ntrt_plot = ggplot(data = traits_sub_site, aes(x = Ntrt_fac, y = log(narea_mean))) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
