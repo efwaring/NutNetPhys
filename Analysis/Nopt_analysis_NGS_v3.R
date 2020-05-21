@@ -4,7 +4,7 @@
 #
 # General strategy: ask questions sequentially from least to most complex
 
-setwd("/Users/nicksmith/Documents/Git/NutNetPhys/Analysis")
+# setwd("/Users/nicksmith/Documents/Git/NutNetPhys/Analysis")
 
 #########################################
 # packages necessary
@@ -71,94 +71,95 @@ nrow(leaf_core_spei)
 # Q1: does leaf N differ amongst treatments
 #########################################
 
-hist(leaf_core_spei $leaf_pct_N)
-leafNper_lmer = lmer(leaf_pct_N ~ Ntrt_fac * Nfix + p_pet + (1|site_code) + (1|Family) + (1|Taxon) + (1|site_code:Family) + (1|site_code:Taxon), data = leaf_core_spei)
-plot(resid(leafNper_lmer) ~ fitted(leafNper_lmer))
-Anova(leafNper_lmer)
-emmeans(leafNper_lmer, ~Ntrt_fac)
-cld(emmeans(leafNper_lmer, ~Ntrt_fac * Nfix)) # percent N is higher in N addition by ~12%
+# hist(leaf_core_spei $leaf_pct_N)
+# leafNper_lmer = lmer(leaf_pct_N ~ Ntrt_fac + 
+#                        (1|site_code) + (1|Taxon) + (1|site_code:Taxon), 
+#                      data = leaf_core_spei)
+# plot(resid(leafNper_lmer) ~ fitted(leafNper_lmer))
+# Anova(leafNper_lmer)
+# emmeans(leafNper_lmer, ~Ntrt_fac)
+# cld(emmeans(leafNper_lmer, ~Ntrt_fac)) # percent N is higher in N addition by ~12%
 
 hist(leaf$Narea)
 hist(log(leaf$Narea))
-leafNarea_lmer = lmer(log(Narea) ~ Ntrt_fac * Nfix + p_pet + (1|site_code) + (1|Family) + (1|Taxon) + (1|site_code:Family) + (1|site_code:Taxon), data = leaf_core_spei)
-plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
+leafNarea_lmer = lmer(log(Narea) ~ Ntrt_fac * p_pet * Ambient_PAR + 
+                        (1|site_code), 
+                      data = leaf_core_spei)
+# plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
 Anova(leafNarea_lmer)
 cld(emmeans(leafNarea_lmer, ~Ntrt_fac))
-cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Nfix)) # ~2% increase in non-N fixers
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]) / abs(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])
+test(emtrends(leafNarea_lmer, ~1, var = 'p_pet'))
+test(emtrends(leafNarea_lmer, ~1, var = 'Ambient_PAR'))
 
 hist(leaf$SLA_num)
 hist(log(leaf$SLA_num))
-SLA_lmer = lmer(log(leaf$SLA) ~ Ntrt_fac * Nfix + p_pet + (1|site_code) + (1|Family) + (1|Taxon) + (1|site_code:Family) + (1|site_code:Taxon), data = leaf_core_spei)
-plot(resid(SLA_lmer) ~ fitted(SLA_lmer))
+SLA_lmer = lmer(log(leaf$SLA) ~ Ntrt_fac * p_pet * Ambient_PAR + 
+                  (1|site_code), 
+                data = leaf_core_spei)
+# plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
+# plot(resid(SLA_lmer) ~ fitted(SLA_lmer))
 Anova(SLA_lmer)
-cld(emmeans(SLA_lmer, ~Ntrt_fac)) # (~1% increase)
+cld(emmeans(SLA_lmer, ~Ntrt_fac))
+(summary(emmeans(SLA_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(SLA_lmer, ~Ntrt_fac))[1,2]) / abs(summary(emmeans(SLA_lmer, ~Ntrt_fac))[1,2])
+test(emtrends(SLA_lmer, ~1, var = 'p_pet'))
+test(emtrends(SLA_lmer, ~1, var = 'Ambient_PAR'))
 
 #########################################
-# A1: yes, N is a little higher (P < 0.001), however the actual effect is quite small (2%). No effect with N fixers. SLA is slightly increased with soil N as well (1%). PLants seem to be "moderately" building larger, higher N leaves with N...not a big effect
+# A1: yes, Narea is higher (P < 0.001), 
+# however the actual effect is quite small (<2% increase)
+# Plants seem to be "moderately" building larger, higher N leaves with N...not a big effect
+# no interaction with climate or light availability
+#########################################
 # 
-#########################################
+# #########################################
+# # Q2: does the change in leaf N differ across climates?
+# #########################################
+# #
+# #
+# # calculate ∆leafN
+# 
+# # aggregate by site, N treatment
+# 
+# # leaf_core_spei_nofix = subset(leaf_core_spei, Nfix == 'no')
+# 
+# leaf_core_spei_group = group_by(leaf_core_spei, site_code, year, Ntrt_fac)
+# leaf_core_spei_mean = summarise_all(leaf_core_spei_group, 
+#                                     .funs = funs(Mean = mean(., na.rm = T), SD = sd(., na.rm = T)))
+# 
+# leaf_core_spei_mean_yN = subset(leaf_core_spei_mean, Ntrt_fac == '1')
+# leaf_core_spei_mean_nN = subset(leaf_core_spei_mean, Ntrt_fac == '0')
+# 
+# # check
+# nrow(leaf_core_spei_mean_yN)
+# nrow(leaf_core_spei_mean_nN)
+# 
+# # deltaNper = ((leaf_core_spei_mean_yN$leaf_pct_N_Mean - leaf_core_spei_mean_nN$leaf_pct_N_Mean) / 
+# #                leaf_core_spei_mean_nN$leaf_pct_N_Mean) * 100
+# 
+# deltaNarea = ((leaf_core_spei_mean_yN$Narea_Mean - leaf_core_spei_mean_nN$Narea_Mean) / 
+#                 leaf_core_spei_mean_nN$Narea_Mean) * 100
+# 
+# # summary(lm(deltaNper ~ leaf_core_spei_mean_nN$p_pet_Mean)) # nothing
+# anova(lm(deltaNarea ~ leaf_core_spei_mean_nN$p_pet_Mean * leaf_core_spei_mean_nN$par_rat_Mean)) # nothing
+# 
+# 
+# #########################################
+# # A2: nope, not really! basically no change regardless of site/climate
+# #########################################
 
-#########################################
-# Q2: does the change in leaf N differ across climates?
-#########################################
-#
-#
-# calculate ∆leafN
-
-# aggregate by site, N treatment
-# remove fixers
-
-leaf_core_spei_nofix = subset(leaf_core_spei, Nfix == 'no')
-
-leaf_core_spei_nofix_group = group_by(leaf_core_spei_nofix, site_code, year, Ntrt_fac)
-leaf_core_spei_nofix_mean = summarise_all(leaf_core_spei_nofix_group, .funs = funs(Mean = mean(., na.rm = T), SD = sd(., na.rm = T)))
-
-leaf_core_spei_nofix_mean_yN = subset(leaf_core_spei_nofix_mean, Ntrt_fac == '1')
-leaf_core_spei_nofix_mean_nN = subset(leaf_core_spei_nofix_mean, Ntrt_fac == '0')
-
-nrow(leaf_core_spei_nofix_mean_yN)
-nrow(leaf_core_spei_nofix_mean_nN)
-
-deltaNper = ((leaf_core_spei_nofix_mean_yN$leaf_pct_N_Mean - leaf_core_spei_nofix_mean_nN$leaf_pct_N_Mean) / leaf_core_spei_nofix_mean_nN$leaf_pct_N_Mean) * 100
-
-deltaNarea = ((leaf_core_spei_nofix_mean_yN$Narea_Mean - leaf_core_spei_nofix_mean_nN$Narea_Mean) / leaf_core_spei_nofix_mean_nN$Narea_Mean) * 100
-
-summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
-summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
-summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
-summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)) # nothing
-
-plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)
-plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$p_pet_Mean)
-plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
-plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
-
-summary(lm(deltaNper ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)) # nothing
-summary(lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)) # nothing
-
-plot(deltaNper ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
-plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$precip.mean_Mean)
-
-lm_deltaNarea = lm(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean)
-anova(lm_deltaNarea)
-summary(lm_deltaNarea)
-
-#########################################
-# A2: does the change in leaf N differ across climates? nope, not really! basically no change regardless of site/climate
-#########################################
-
-deltaNarea_line = summary(lm_deltaNarea)$coefficients[1, 1] + summary(lm_deltaNarea)$coefficients[2, 1] * seq(0, 1, 0.1)
-
-par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
-palette = colorRampPalette(brewer.pal(9,'Blues'))
-#p_pet_cols <- palette(9)[as.numeric(cut(biomass_core_spei_nofix_mean_nN$p_pet_Mean,breaks = 9))]
-plot(deltaNarea ~ leaf_core_spei_nofix_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = 'blue',  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 300))
-axis(1, seq(0, 1, 0.2), cex.axis = 2)
-axis(2, seq(-100, 300, 100), cex.axis = 2, las = 1)
-mtext(side = 1, 'Light interception', line = 4, cex = 2)
-mtext(side = 2, '∆N per leaf area (%)', line = 5, cex = 2)
-lines(deltaNarea_line ~ seq(0, 1, 0.1), lwd = 4)
-text(0.5, 290, 'p = 0.35; mean = +12%', cex = 1.8)
+# deltaNarea_line = summary(lm_deltaNarea)$coefficients[1, 1] + summary(lm_deltaNarea)$coefficients[2, 1] * seq(0, 1, 0.1)
+# 
+# par(mfrow = c(1, 1), oma = c(4, 4, 1, 1))
+# palette = colorRampPalette(brewer.pal(9,'Blues'))
+# p_pet_cols <- palette(9)[as.numeric(cut(leaf_core_spei_mean_nN$p_pet_Mean,breaks = 9))]
+# plot(deltaNarea ~ leaf_core_spei_mean_nN$par_rat_Mean, pch =21, cex = 3, bg = 'blue',  yaxt = 'n', xaxt = 'n', ylab = '', xlab = '', xlim = c(0, 1), ylim = c(-100, 300))
+# axis(1, seq(0, 1, 0.2), cex.axis = 2)
+# axis(2, seq(-100, 300, 100), cex.axis = 2, las = 1)
+# mtext(side = 1, 'Light interception', line = 4, cex = 2)
+# mtext(side = 2, '∆N per leaf area (%)', line = 5, cex = 2)
+# lines(deltaNarea_line ~ seq(0, 1, 0.1), lwd = 4)
+# text(0.5, 290, 'p = 0.35; mean = +12%', cex = 1.8)
 
 #########################################
 # Q3: does plot N differ among treatments?
@@ -184,24 +185,24 @@ plot$Nfix = 'no'
 plot$Nfix[plot$category == "LEGUME"] = 'yes'
 plot$Nfix[plot$category == "BRYOPHYTE"] = 'bryo'
 
-plot_pct_N_num_lmer = lmer(pct_N_num ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
-Anova(plot_pct_N_num_lmer)
-plot(resid(plot_pct_N_num_lmer) ~ fitted(plot_pct_N_num_lmer))
-cld(emmeans(plot_pct_N_num_lmer, ~Ntrt_fac * Nfix)) # 16% increase in non-N fixing non-bryophytes
-cld(emmeans(plot_pct_N_num_lmer, ~Ntrt_fac))
+# plot_pct_N_num_lmer = lmer(pct_N_num ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
+# Anova(plot_pct_N_num_lmer)
+# plot(resid(plot_pct_N_num_lmer) ~ fitted(plot_pct_N_num_lmer))
+# cld(emmeans(plot_pct_N_num_lmer, ~Ntrt_fac * Nfix)) # 16% increase in non-N fixing non-bryophytes
+# cld(emmeans(plot_pct_N_num_lmer, ~Ntrt_fac))
 
-plot_N_tot_lmer = lmer(log(N_tot) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
-Anova(plot_N_tot_lmer)
-plot(resid(plot_N_tot_lmer) ~ fitted(plot_N_tot_lmer))
-cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac * Nfix)) # 9% increase in non-N fixing non-bryophytes
-cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac))
-
-plot_N_tot_plot <- ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = log(N_tot))) +
-	geom_boxplot()
-
-plot_N_tot_plot + scale_x_discrete(labels = c('-N', '+N'))
-
-plot(log(N_tot) ~ Ntrt_fac,  data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'))
+# plot_N_tot_lmer = lmer(log(N_tot) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * Nfix + (1|site_code), data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE'))
+# Anova(plot_N_tot_lmer)
+# plot(resid(plot_N_tot_lmer) ~ fitted(plot_N_tot_lmer))
+# cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac * Nfix)) # 9% increase in non-N fixing non-bryophytes
+# cld(emmeans(plot_N_tot_lmer, ~Ntrt_fac))
+# 
+# plot_N_tot_plot <- ggplot(subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'), aes(x = Ntrt_fac, y = log(N_tot))) +
+# 	geom_boxplot()
+# 
+# plot_N_tot_plot + scale_x_discrete(labels = c('-N', '+N'))
+# 
+# plot(log(N_tot) ~ Ntrt_fac,  data = subset(plot, live == 1 & category != 'ANNUAL' & category != 'PERENNIAL' & category != 'LIVE' & Nfix == 'no'), xlab = c('-N', '+N'))
 
 #########################################
 # A3: does plot N differ among treatments? yes, it seems that the N treatment increases plot %N by ~ 16% in the normal species. No change in N fixers and bryophytes. Interestingly, the total plot N only goes up by ~9% in the "normal" species. This is still quite a bit bigger than the change in per leaf area N!
