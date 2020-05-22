@@ -35,3 +35,12 @@ fjmax25_nbioe = function(jmax25){
   nbioe # leaf n in bioenergetics gN/m2
   
 }
+
+# structural N
+### lma conversion from Dong et al. (2017) Biogeosciences
+flma_nstructure = function(lma){
+  
+  nstructure = (10^-2.67) * (lma ^ 0.99)
+  nstructure
+  
+}
