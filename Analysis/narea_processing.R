@@ -20,8 +20,8 @@ traits = read.csv('../Data/leaf_plus.csv')
 head(traits)
 
 ## fiter by overlapping sites
-source('filter_sites.R')
-traits = filter(traits, site_code %in% overlap)
+# source('filter_sites.R')
+# traits = filter(traits, site_code %in% overlap)
 
 ## make sure factors are correctly defined
 traits$Ntrt_fac = as.factor(traits$Ntrt_fac)
@@ -62,27 +62,30 @@ traits$par_per_leaf_area = traits$par * ((1 - exp(-0.5 * traits$lai)) / traits$l
 # hist(((1 - exp(-0.5 * traits$lai)) / traits$lai))
 
 ## remove C4 and values without d13c
-traits_sub = subset(traits, lma > 0 & leaf_dry_mass_g < 100 & photosynthetic_pathway == 'C3' & leaf_C13_delta_PDB != 'NA'
-                    & leaf_C13_delta_PDB < -20 & trt != 'Fence' & trt != 'NPK+Fence')
-traits_sub$delta = (-8 - traits_sub$leaf_C13_delta_PDB) / (1 + traits_sub$leaf_C13_delta_PDB * 0.001)
-traits_sub$chi = (traits_sub$delta - 4.4) / (27 - 4.4)
-traits_sub = subset(traits_sub, tmp > 5)
-# hist(traits_sub$lma) # some extremely high values
-# hist(traits_sub$narea) # some extremely high values
-# hist(traits_sub$la_m2)
-# hist(traits_sub$leaf_dry_mass_g) # 
-# hist(traits_sub$chi) # looks good
+traits$delta = (-8 - traits$leaf_C13_delta_PDB) / (1 + traits$leaf_C13_delta_PDB * 0.001)
+traits$chi = (traits$delta - 4.4) / (27 - 4.4)
+traits$chi[traits$chi > 1] = 1
+traits$chi[traits$chi < 0] = 0
+# hist(traits$lma) # some extremely high values
+# hist(traits$narea) # some extremely high values
+# hist(traits$la_m2)
+# hist(traits$leaf_dry_mass_g) # 
+# hist(traits$chi) # looks good
+traits = subset(traits, chi > 0.4 & chi < 1)
 
-write.csv(traits_sub, '../Data/processed/traits.csv')
+write.csv(traits, '../Data/processed/traits.csv')
 
-traits_sub_group_by_site = group_by(traits_sub, 
+traits_group_by_site = group_by(traits, 
                                     site_code, plot, block, trt, Ntrt_fac, Ptrt_fac, Ktrt_fac)
-traits_sub_site = summarise(traits_sub_group_by_site, 
+traits_site = summarise(traits_group_by_site, 
                             narea_mean = mean(narea, na.rm = T), 
                             chi_mean = mean(chi, na.rm = T),
-                            tmp_mean = mean(tmp, na.rm = T), 
+                            tmp_mean = mean(tmp, na.rm = T),
+                            vpd_mean = mean(vpd, na.rm = T),
+                            z_mean = mean(z, na.rm = T),
                             lma_mean = mean(lma, na.rm = T),
                             par_per_leaf_area_mean = mean(par_per_leaf_area, na.rm = T),
+                            par_mean = mean(par, na.rm = T),
                             lai_mean = mean(lai, na.rm = T),
                             p_pet_mean = mean(p_pet, na.rm = T),
                             live_mass_mean = mean(live_mass, na.rm = T))
