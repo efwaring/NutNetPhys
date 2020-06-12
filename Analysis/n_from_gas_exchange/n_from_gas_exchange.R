@@ -44,3 +44,18 @@ flma_nstructure = function(lma){
   nstructure
   
 }
+
+fvpmax25_nrubisco = function(vpmax25){ # assuming smaller size, but similar catalytic functions to rubisco
+  
+  Mr = 410000 # https://www.jbc.org/content/278/14/11867
+  Nr = 0.0114 # mol N per g Rubisco (similar for PEP? https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1054259/pdf/plntphys00619-0049.pdf)
+  Mn = 14 # gN per mol N
+  nr =  8 # mol Rubisco site per mol Rubisco
+  kcat = 5440000 # µmol CO2 per mol Rubisco site per second # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4634053/
+  
+  npep = vpmax25 * Mr * Nr * Mn * (1/nr) * (1/kcat)
+  # nrubisco = vcmax25 * (1/3500000) * (8) * 550000 * (1/0.0114) * 14
+  npep # leaf n in rubisco gN/m2
+  
+}
+

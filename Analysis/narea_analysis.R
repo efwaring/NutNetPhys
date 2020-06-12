@@ -19,6 +19,8 @@ library(relaimpo)
 # source('optimal_vcmax_R/calc_optimal_vcmax.R')
 source('optimal_vcmax_R/calc_optimal_vcmax_knownchi.R')
 sourceDirectory('optimal_vcmax_R/functions')
+source('C4model/C4model_knownchi.R')
+sourceDirectory('C4model/functions')
 source('n_from_gas_exchange/n_from_gas_exchange.R')
 
 multiplot <- function(..., plotlist=NULL, cols) {
@@ -169,7 +171,7 @@ cld(emmeans(leafchi_lmer, ~Ntrt_fac))
 # hist(leaf$narea)
 # hist(log(leaf$narea))
 leafNarea_lmer = lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + tmp + log(par) +
-                        log(lma) + Nfix +
+                        log(lma) + Nfix + photosynthetic_pathway +
                         (1|site_code) + (1|site_code:block_fac) + (1|Taxon), 
                       data = leaf)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
@@ -180,7 +182,10 @@ cld(emmeans(leafNarea_lmer, ~Ntrt_fac))
 (exp(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])) / 
   exp(abs(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]))
 
+cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))
+
 cld(emmeans(leafNarea_lmer, ~Nfix))
+cld(emmeans(leafNarea_lmer, ~photosynthetic_pathway))
 test(emtrends(leafNarea_lmer, ~1, var = 'chi'))
 test(emtrends(leafNarea_lmer, ~1, var = 'log(lma)'))
 test(emtrends(leafNarea_lmer, ~1, var = 'tmp'))
@@ -230,8 +235,9 @@ narea_plot = ggplot(data = leaf,
 
 relimp_leafn = calc.relip.mm(leafNarea_lmer)$lmg
 relimp_leafn_df = NULL
-relimp_leafn_df$Factor = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'Light', 'LMA', 'N fixer', 'Soil interactions')
-relimp_leafn_df$Importance = as.numeric(as.character(c(relimp_leafn[1:8], sum(relimp_leafn[9:12]))))
+relimp_leafn_df$Factor = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'LMA', 'N fixer', 'C3/C4', 'Soil interactions')
+relimp_leafn_df$Importance = as.numeric(as.character(c(relimp_leafn[1:9], sum(relimp_leafn[10:13]))))
+sum(relimp_leafn[c(1:3, 10:13)]) # importance of soil
 relimp_leafn_df = as.data.frame(relimp_leafn_df)
 unexplained = 1 - sum(relimp_leafn_df$Importance)
 unexplained_df = data.frame("Unexplained", unexplained)
@@ -241,7 +247,7 @@ relimp_leafn_df = rbind(relimp_leafn_df, unexplained_df)
 narea_treemap = ggplot(relimp_leafn_df, aes(area = Importance, label = Factor)) +
   theme(plot.tag = element_text(size = 30)) +
   geom_treemap(fill = c('burlywood1', 'burlywood2', 'burlywood3', 
-                        'blue', 'yellow', 'red', 'grey', 'orange', 
+                        'blue', 'yellow', 'red', 'grey', 'orange', 'green', 
                         'burlywood4', 'white'), colour = 'black') +
   geom_treemap_text(colour = "black", place = "centre",
                     grow = TRUE) +
@@ -258,23 +264,45 @@ dev.off()
 #####################################################################
 ## Narea predictions
 #####################################################################
-gas_exchange_pred = calc_optimal_vcmax_knownchi(tg_c = leaf$tmp, 
+gas_exchange_pred_c3 = calc_optimal_vcmax_knownchi(tg_c = leaf$tmp, 
                                        paro = leaf$par, 
                                        cao = 400, 
                                        vpdo = leaf$vpd, 
                                        z = leaf$z,
-                                       chi = leaf$chi)
+                                       chi = leaf$chi,
+                                       q0 = 0.1)
 
-leaf$vcmax25 = gas_exchange_pred$vcmax /
-  calc_vcmax_tresp_mult(gas_exchange_pred$tg_c, gas_exchange_pred$tg_c, 25)
-leaf$jmax25 = gas_exchange_pred$jmax /
-  calc_jmax_tresp_mult(gas_exchange_pred$tg_c, gas_exchange_pred$tg_c, 25)
+gas_exchange_pred_c4 = C4model_knownchi(tg_c = leaf$tmp, 
+                                                   paro = leaf$par, 
+                                                   cao = 400, 
+                                                   vpdo = leaf$vpd, 
+                                                   z = leaf$z,
+                                                   chi = leaf$chi,
+                                        q0 = 0.1)
+
+leaf$vcmax25[leaf$photosynthetic_pathway == 'C3'] = gas_exchange_pred_c3$vcmax[leaf$photosynthetic_pathway == 'C3'] /
+  calc_vcmax_tresp_mult(gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 
+                        gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 25)
+leaf$jmax25[leaf$photosynthetic_pathway == 'C3'] = gas_exchange_pred_c3$jmax[leaf$photosynthetic_pathway == 'C3'] /
+  calc_jmax_tresp_mult(gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 
+                       gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 25)
+leaf$vpmax25[leaf$photosynthetic_pathway == 'C3'] = 0
+leaf$vcmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$vcmax[leaf$photosynthetic_pathway == 'C4'] /
+  calc_vcmax_tresp_mult(gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 
+                        gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 25)
+leaf$jmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$jmax[leaf$photosynthetic_pathway == 'C4'] /
+  calc_jmax_tresp_mult(gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 
+                       gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 25)
+leaf$vpmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$vpmax[leaf$photosynthetic_pathway == 'C4'] /
+  calc_vcmax_tresp_mult(gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 
+                        gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 25)
 
 leaf$nrubisco = fvcmax25_nrubisco(leaf$vcmax25)
 leaf$nbioe = fjmax25_nbioe(leaf$jmax25)
+leaf$npep = fvcmax25_nrubisco(leaf$vpmax25)
 leaf$nstructure = flma_nstructure(leaf$lma)
-leaf$nall = leaf$nrubisco + leaf$nbioe + leaf$nstructure
-leaf$nphoto = leaf$nrubisco + leaf$nbioe
+leaf$nall = leaf$nrubisco + leaf$nbioe + leaf$nstructure + leaf$npep
+leaf$nphoto = leaf$nrubisco + leaf$nbioe + leaf$npep
 leaf$nrubisco_frac = leaf$nrubisco / leaf$nall
 leaf$nphoto_frac = leaf$nphoto / leaf$nall
 
@@ -289,7 +317,7 @@ leaf$lognphoto = log(leaf$nphoto)
 leaf$lognstructure = log(leaf$nstructure)
 npred_soil_lmer = lmer(log(narea) ~ lognphoto + lognstructure + 
                          Ntrt_fac * Ptrt_fac * Ktrt_fac +
-                         Nfix +
+                         Nfix + photosynthetic_pathway +
                          (1|site_code) + (1|site_code:block_fac) + (1|Taxon),
                   data = leaf)
 plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
@@ -315,12 +343,12 @@ npred_photo_plot = ggplot(data = leaf,
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
   geom_point(shape = 16, size = 3, alpha = 0.5) +
-  scale_color_manual(values = c("black", "brown"), labels = c("Ambient", "Added N")) +
+  scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
   labs(color = 'Soil N') +
   geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_lowN), 
             col = 'black', lwd = 3, alpha = 0.8) +
   geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
-            col = 'brown', lwd = 3, alpha = 0.8) +
+            col = 'burlywood1', lwd = 3, alpha = 0.8) +
   ylab(expression('Log leaf ' * italic('N')['area'])) +
   xlab(expression('Log leaf ' * italic('N')['photo']))
 
@@ -346,12 +374,12 @@ npred_structure_plot = ggplot(data = leaf,
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
   geom_point(shape = 16, size = 3, alpha = 0.5) +
-  scale_color_manual(values = c("black", "brown"), labels = c("Ambient", "Added N")) +
+  scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
   labs(color = 'Soil N') +
   geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_lowN), 
             col = 'black', lwd = 3, alpha = 0.8) +
   geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
-            col = 'brown', lwd = 3, alpha = 0.8) +
+            col = 'burlywood1', lwd = 3, alpha = 0.8) +
   ylab(expression('Log leaf ' * italic('N')['area'])) +
   xlab(expression('Log leaf ' * italic('N')['structure']))
 
@@ -401,9 +429,9 @@ lai_plot = ggplot(data = leaf_site,
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
   geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
+  geom_dotplot(binaxis = 'y', binwidth = 0.1, fill = 'burlywood1', stackdir = 'center', alpha = 0.5) +
   scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('') +
+  xlab('Nitrogen treatment') +
   ylab(expression('Log LAI (m' ^ '2' *' m' ^'-2' * ')'))
 
 live_mass_plot = ggplot(data = leaf_site, 
@@ -416,7 +444,7 @@ live_mass_plot = ggplot(data = leaf_site,
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
   geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.07, stackdir = 'center', alpha = 0.5) +
+  geom_dotplot(binaxis = 'y', binwidth = 0.07, fill = 'burlywood1', stackdir = 'center', alpha = 0.5) +
   scale_x_discrete(labels = c('Ambient', 'Added N')) +
   xlab('Nitrogen treatment') +
   ylab(expression('Log Biomass (g m' ^ '2' * ')'))
@@ -445,7 +473,8 @@ cld(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'lai_mean'))
 ### calculate deltas (per block per site)
 leaf_site_N_group_by = group_by(leaf, 
                                 site_code, Ntrt_fac)
-leaf_site_N = summarise(leaf_site_N_group_by, 
+leaf_site_N = summarise(leaf_site_N_group_by,
+                        n = n(),
                         narea_mean = mean(narea, na.rm = T),
                         lai_mean = mean(lai, na.rm = T),
                         chi_mean = mean(chi, na.rm = T),
@@ -470,19 +499,19 @@ leaf_site_trt$delta_chi = ((leaf_site_trt$chi_mean.y -
 
 ### model response
 delta_lai_lm = lm(delta_narea ~ delta_lai, 
-                  data = leaf_site_trt)
+                  data = leaf_site_trt) # extreme outlier
 plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
 Anova(delta_lai_lm)
 summary(delta_lai_lm)
 
 delta_live_mass_lm = lm(delta_narea ~ delta_live_mass, 
-              data = leaf_site_trt)
+              data = subset(leaf_site_trt, n.x > 10 & n.y > 10 & site_code != 'burrawan.au'))
 plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
 Anova(delta_live_mass_lm)
 summary(delta_live_mass_lm)
 
 
-delta_plot = ggplot(data = leaf_site_trt, 
+delta_plot = ggplot(data = subset(leaf_site_trt, n.x > 10 & n.y > 10 & site_code != 'burrawan.au'), 
        aes(x = delta_lai, y = delta_narea)) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),

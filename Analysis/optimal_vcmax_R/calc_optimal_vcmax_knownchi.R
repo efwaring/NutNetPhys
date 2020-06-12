@@ -41,7 +41,7 @@ library(R.utils)
 sourceDirectory('functions')
 
 calc_optimal_vcmax_knownchi <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, 
-                               paro = 800, q0 = 0.257, theta = 0.85, chi = 0.7){
+                               paro = 800, q0 = 0.25, theta = 0.85, chi = 0.7){
   
   # constants
   R <- 8.314
@@ -66,7 +66,7 @@ calc_optimal_vcmax_knownchi <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400,
   omega_star <- (1 + (omega) - sqrt((1 + (omega))^2 - (4 * theta * omega))) 
   
   # calculate q0 using Bernacchi et al. (2003) temperature response (set to 0.257 at 25C)
-  q0 = 0.257
+  # q0 = 0.257
 
   # calculate vcmax and jmax	
   vcmax <- ((q0 * par * m) / mc) * (omega_star / (8 * theta))	          

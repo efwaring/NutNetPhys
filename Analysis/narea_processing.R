@@ -62,8 +62,11 @@ traits$par_per_leaf_area = traits$par * ((1 - exp(-0.5 * traits$lai)) / traits$l
 # hist(((1 - exp(-0.5 * traits$lai)) / traits$lai))
 
 ## remove C4 and values without d13c
-traits$delta = (-8 - traits$leaf_C13_delta_PDB) / (1 + traits$leaf_C13_delta_PDB * 0.001)
-traits$chi = (traits$delta - 4.4) / (27 - 4.4)
+traits$delta = ((-0.008 - traits$leaf_C13_delta_PDB * 0.001) / (1 + traits$leaf_C13_delta_PDB * 0.001)) * 1000
+traits$chi[traits$photosynthetic_pathway == 'C3'] = 
+  (traits$delta[traits$photosynthetic_pathway == 'C3'] * 0.001 - 0.0044) / (0.027 - 0.0044)
+traits$chi[traits$photosynthetic_pathway == 'C4'] = 
+  (traits$delta[traits$photosynthetic_pathway == 'C4'] * 0.001 - 0.0044) / ((-0.0057 + 0.03*0.4) - 0.0044)
 traits$chi[traits$chi > 1] = 1
 traits$chi[traits$chi < 0] = 0
 # hist(traits$lma) # some extremely high values
@@ -71,12 +74,17 @@ traits$chi[traits$chi < 0] = 0
 # hist(traits$la_m2)
 # hist(traits$leaf_dry_mass_g) # 
 # hist(traits$chi) # looks good
-traits = subset(traits, chi > 0.4 & chi < 1)
+traits = subset(traits, chi > 0.2 & chi < 0.95)
+traits = subset(traits, site_code != 'bldr.us' & 
+                  site_code != 'gilb.za' & 
+                  site_code != 'konz.us' &
+                  site_code != 'burrawan.au' &
+                  site_code != 'saline.us') # remove sites without much leaf data
 
 write.csv(traits, '../Data/processed/traits.csv')
 
 traits_group_by_site = group_by(traits, 
-                                    site_code, plot, block, trt, Ntrt_fac, Ptrt_fac, Ktrt_fac)
+                                    site_code, plot, block, trt, Ntrt, Ptrt, Ktrt)
 traits_site = summarise(traits_group_by_site, 
                             narea_mean = mean(narea, na.rm = T), 
                             chi_mean = mean(chi, na.rm = T),
@@ -90,4 +98,4 @@ traits_site = summarise(traits_group_by_site,
                             p_pet_mean = mean(p_pet, na.rm = T),
                             live_mass_mean = mean(live_mass, na.rm = T))
 
-write.csv(traits_sub_site, '../Data/processed/traits_site.csv')
+write.csv(traits_site, '../Data/processed/traits_site.csv')
