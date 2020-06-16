@@ -74,12 +74,17 @@ traits$chi[traits$chi < 0] = 0
 # hist(traits$la_m2)
 # hist(traits$leaf_dry_mass_g) # 
 # hist(traits$chi) # looks good
-traits = subset(traits, chi > 0.2 & chi < 0.95)
-traits = subset(traits, site_code != 'bldr.us' & 
-                  site_code != 'gilb.za' & 
-                  site_code != 'konz.us' &
-                  site_code != 'burrawan.au' &
-                  site_code != 'saline.us') # remove sites without much leaf data
+# traits = subset(traits, chi > 0.2 & chi < 0.95)
+
+traits_group_by_site_for_count = group_by(traits, site_code)
+traits_site_count = summarise(traits_group_by_site_for_count, n = n())
+subset(traits_site_count, n <=30)
+
+# subset(traits, site_code == 'bldr.us')
+# traits = subset(traits, site_code != 'bldr.us' & 
+#                   site_code != 'gilb.za' & 
+#                   site_code != 'konz.us' &
+#                   site_code != 'saline.us') # remove sites without much leaf data (mostly due to bad chi values)
 
 write.csv(traits, '../Data/processed/traits.csv')
 

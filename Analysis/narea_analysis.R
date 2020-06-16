@@ -158,8 +158,8 @@ leaf$tmp_scaled = leaf$tmp - 25
 # hist(leaf$chi)
 # hist(log(leaf$Narea))
 leafchi_lmer = lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + log(vpd) + z +
-                    (1|site_code) + (1|site_code:block_fac) + (1|site_code:Taxon), 
-                    data = leaf)
+                      (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
+                    data = subset(leaf, chi > 0.2 & chi < 0.95))
 # plot(resid(leafchi_lmer) ~ fitted(leafchi_lmer))
 summary(leafchi_lmer)
 Anova(leafchi_lmer)
@@ -172,8 +172,8 @@ cld(emmeans(leafchi_lmer, ~Ntrt_fac))
 # hist(log(leaf$narea))
 leafNarea_lmer = lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + tmp + log(par) +
                         log(lma) + Nfix + photosynthetic_pathway +
-                        (1|site_code) + (1|site_code:block_fac) + (1|Taxon), 
-                      data = leaf)
+                        (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
+                      data = subset(leaf, chi > 0.2 & chi < 0.95))
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
 Anova(leafNarea_lmer)
 summary(leafNarea_lmer)
@@ -194,7 +194,7 @@ test(emtrends(leafNarea_lmer, ~1, var = 'log(par)'))
 calc.relip.mm(leafNarea_lmer)
 
 ### make figure
-narea_plot = ggplot(data = leaf, 
+narea_plot = ggplot(data = subset(leaf, chi > 0.2 & chi < 0.95), 
                          aes(x = Ntrt_fac, y = log(narea))) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(4), colour = 'black'),
@@ -318,8 +318,8 @@ leaf$lognstructure = log(leaf$nstructure)
 npred_soil_lmer = lmer(log(narea) ~ lognphoto + lognstructure + 
                          Ntrt_fac * Ptrt_fac * Ktrt_fac +
                          Nfix + photosynthetic_pathway +
-                         (1|site_code) + (1|site_code:block_fac) + (1|Taxon),
-                  data = leaf)
+                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac),
+                  data = subset(leaf, chi > 0.2 & chi < 0.95))
 plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
 Anova(npred_soil_lmer)
 summary(npred_soil_lmer)
@@ -387,6 +387,29 @@ jpeg(filename = "plots/npred_plot.jpeg", width = 800, height = 500, units = 'px'
 multiplot(npred_structure_plot, npred_photo_plot, cols=2)
 dev.off()
 
+relimp_leafn_pred = calc.relip.mm(npred_soil_lmer)$lmg
+relimp_leafn_pred_df = NULL
+relimp_leafn_pred_df$Factor = c('Nphoto', 'Nstructure', 'Soil N', 'Soil P', 'Soil K+µ', 'N fixer', 'C3/C4', 'Soil interactions')
+relimp_leafn_pred_df$Importance = as.numeric(as.character(c(relimp_leafn_pred[1:7], sum(relimp_leafn_pred[8:11]))))
+sum(relimp_leafn_pred[c(3:5, 8:11)]) # importance of soil
+relimp_leafn_pred_df = as.data.frame(relimp_leafn_pred_df)
+unexplained = 1 - sum(relimp_leafn_pred_df$Importance)
+unexplained_pred_df = data.frame("Unexplained", unexplained)
+names(unexplained_pred_df) = c("Factor", "Importance")
+relimp_leafn_pred_df = rbind(relimp_leafn_pred_df, unexplained_pred_df)
+
+narea_pred_treemap = ggplot(relimp_leafn_pred_df, aes(area = Importance, label = Factor)) +
+  theme(plot.tag = element_text(size = 30)) +
+  geom_treemap(fill = c('darkgreen', 'grey', 'burlywood1', 'burlywood2', 'burlywood3', 
+                        'orange', 'green', 
+                        'burlywood4', 'white'), colour = 'black') +
+  geom_treemap_text(colour = "black", place = "centre",
+                    grow = TRUE)
+
+jpeg(filename = "plots/narea_pred_treemap.jpeg", width = 850, height = 900, units = 'px')
+plot(narea_pred_treemap)
+dev.off()
+
 #####################################################################
 ## soil N effects on LAI
 #####################################################################
@@ -404,23 +427,32 @@ lai_lmer = lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                 data = leaf_site)
 # plot(resid(lai_lmer) ~ fitted(lai_lmer))
 Anova(lai_lmer)
+summary(lai_lmer)
 cld(emmeans(lai_lmer, ~Ntrt_fac))
+cld(emmeans(lai_lmer, ~Ntrt_fac*Ptrt_fac))
 (exp(summary(emmeans(lai_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(lai_lmer, ~Ntrt_fac))[1,2])) / 
   abs(exp(summary(emmeans(lai_lmer, ~Ntrt_fac))[1,2]))
 
+calc.relip.mm(lai_lmer)
+
 # hist(leaf_site_Nonly$live_mass_mean)
 # hist(log(leaf_site_Nonly$live_mass_mean))
-live_mass_lmer = lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + 
-                        (1|site_code) + (1|site_code:block), 
-                      data = leaf_site)
-# plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
-Anova(live_mass_lmer)
-cld(emmeans(live_mass_lmer, ~Ntrt_fac))
-(exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])) / 
-  abs(exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]))
+# live_mass_lmer = lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + 
+#                         (1|site_code) + (1|site_code:block), 
+#                       data = leaf_site)
+# # plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
+# Anova(live_mass_lmer)
+# cld(emmeans(live_mass_lmer, ~Ntrt_fac))
+# (exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])) / 
+#   abs(exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]))
+
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '0'] = '-N, -P'
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '0'] = '+N, -P'
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '1'] = '-N, +P'
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '1'] = '+N, +P'
 
 lai_plot = ggplot(data = leaf_site, 
-                  aes(x = Ntrt_fac, y = log(lai_mean))) +
+                  aes(x = NPgroup, y = log(lai_mean))) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
@@ -429,29 +461,30 @@ lai_plot = ggplot(data = leaf_site,
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
   geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.1, fill = 'burlywood1', stackdir = 'center', alpha = 0.5) +
-  scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('Nitrogen treatment') +
+  geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
+  scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
+  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
+  xlab('N x P treatment') +
   ylab(expression('Log LAI (m' ^ '2' *' m' ^'-2' * ')'))
 
-live_mass_plot = ggplot(data = leaf_site, 
-                        aes(x = Ntrt_fac, y = log(live_mass_mean))) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(binaxis = 'y', binwidth = 0.07, fill = 'burlywood1', stackdir = 'center', alpha = 0.5) +
-  scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('Nitrogen treatment') +
-  ylab(expression('Log Biomass (g m' ^ '2' * ')'))
+# live_mass_plot = ggplot(data = leaf_site, 
+#                         aes(x = Ntrt_fac, y = log(live_mass_mean))) +
+#   theme(legend.position = "none", 
+#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
+#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
+#         axis.text.x=element_text(size=rel(2), colour = 'black'),
+#         axis.text.y=element_text(size=rel(2), colour = 'black'),
+#         panel.background = element_rect(fill = 'white', colour = 'black'),
+#         panel.grid.major = element_line(colour = "grey")) +
+#   geom_boxplot(outlier.color = NA, fill = 'white') +
+#   geom_dotplot(binaxis = 'y', binwidth = 0.07, fill = 'burlywood1', stackdir = 'center', alpha = 0.5) +
+#   scale_x_discrete(labels = c('Ambient', 'Added N')) +
+#   xlab('Nitrogen treatment') +
+#   ylab(expression('Log Biomass (g m' ^ '2' * ')'))
 
-jpeg(filename = "plots/plant_plot.jpeg", width = 550, height = 900, units = 'px')
-multiplot(lai_plot, live_mass_plot, cols=1)
-dev.off()
+# jpeg(filename = "plots/plant_plot.jpeg", width = 550, height = 900, units = 'px')
+# multiplot(lai_plot, live_mass_plot, cols=1)
+# dev.off()
 
 jpeg(filename = "plots/lai_plot.jpeg", width = 500, height = 550, units = 'px')
 plot(lai_plot)
@@ -499,19 +532,19 @@ leaf_site_trt$delta_chi = ((leaf_site_trt$chi_mean.y -
 
 ### model response
 delta_lai_lm = lm(delta_narea ~ delta_lai, 
-                  data = leaf_site_trt) # extreme outlier
+                  data = subset(leaf_site_trt, site_code != 'burrawan.au')) # extreme outlier
 plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
 Anova(delta_lai_lm)
 summary(delta_lai_lm)
 
 delta_live_mass_lm = lm(delta_narea ~ delta_live_mass, 
-              data = subset(leaf_site_trt, n.x > 10 & n.y > 10 & site_code != 'burrawan.au'))
+              data = subset(leaf_site_trt, site_code != 'burrawan.au'))
 plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
 Anova(delta_live_mass_lm)
 summary(delta_live_mass_lm)
 
 
-delta_plot = ggplot(data = subset(leaf_site_trt, n.x > 10 & n.y > 10 & site_code != 'burrawan.au'), 
+delta_plot = ggplot(data = subset(leaf_site_trt, site_code != 'burrawan.au'), 
        aes(x = delta_lai, y = delta_narea)) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
