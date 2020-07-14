@@ -533,6 +533,7 @@ leaf_site_trt$delta_chi = ((leaf_site_trt$chi_mean.y -
 ### model response
 delta_lai_lm = lm(delta_narea ~ delta_lai, 
                   data = subset(leaf_site_trt, site_code != 'burrawan.au')) # extreme outlier
+                  # data = leaf_site_trt)
 plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
 Anova(delta_lai_lm)
 summary(delta_lai_lm)
