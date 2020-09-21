@@ -495,58 +495,116 @@ dev.off()
 #####################################################################
 
 ### non-delta response
-narea_supdem_lmer = lmer(log(narea_mean) ~ Ntrt_fac + Ntrt_fac:lai_mean +
-                           (1|site_code) + (1|site_code:block), 
-                         data = leaf_site)
+#### note: not really sure what this is telling us!
+narea_supdem_lmer = lmer(log(narea) ~ Ntrt_fac * spp_lai +
+                           (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
+                         data = leaf)
 plot(resid(narea_supdem_lmer) ~ fitted(narea_supdem_lmer))
 Anova(narea_supdem_lmer)
-test(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'lai_mean'))
-cld(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'lai_mean'))
+test(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'spp_lai'))
+cld(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'spp_lai'))
 
-### calculate deltas (per block per site)
+### calculate deltas (per species per treatment type per site)
+leaf$spp_live_mass = leaf$live_mass * (leaf$max_cover / 100)
 leaf_site_N_group_by = group_by(leaf, 
-                                site_code, Ntrt_fac)
+                                site_code, plot, block_fac, Ntrt_fac, Ptrt_fac, Ktrt_fac,
+                                Taxon, Nfix, photosynthetic_pathway)
 leaf_site_N = summarise(leaf_site_N_group_by,
                         n = n(),
                         narea_mean = mean(narea, na.rm = T),
-                        lai_mean = mean(lai, na.rm = T),
+                        spp_lai_mean = mean(spp_lai, na.rm = T),
                         chi_mean = mean(chi, na.rm = T),
-                        live_mass_mean = mean(live_mass, na.rm = T))
+                        spp_live_mass_mean = mean(spp_live_mass, na.rm = T),
+                        max_cover_mean = mean(max_cover, na.rm = T),
+                        lma_mean = mean(lma, na.rm = T))
+# leaf_site_N$PKtrt_fac = as.factor(paste(leaf_site_N$Ptrt_fac, leaf_site_N$Ktrt_fac, sep = ''))
 leaf_site_lowN = subset(leaf_site_N, Ntrt_fac == '0')
 leaf_site_highN = subset(leaf_site_N, Ntrt_fac == '1')
 nrow(leaf_site_lowN)
 nrow(leaf_site_highN)
-leaf_site_trt = right_join(leaf_site_lowN, leaf_site_highN, 
-                                by = c('site_code'))
+leaf_site_trt = left_join(leaf_site_lowN, leaf_site_highN, 
+                                by = c('site_code', 'block_fac', 'Ptrt_fac', 'Ktrt_fac', 
+                                       'Nfix', 'photosynthetic_pathway', 'Taxon'))
 nrow(leaf_site_trt)
 
 leaf_site_trt$delta_narea = ((leaf_site_trt$narea_mean.y - 
                                 leaf_site_trt$narea_mean.x) / leaf_site_trt$narea_mean.x) * 100
-leaf_site_trt$delta_lai = ((leaf_site_trt$lai_mean.y - 
-                              leaf_site_trt$lai_mean.x) / leaf_site_trt$lai_mean.x) * 100
-leaf_site_trt$delta_live_mass = ((leaf_site_trt$live_mass_mean.y - 
-                                    leaf_site_trt$live_mass_mean.x) / leaf_site_trt$live_mass_mean.x) * 100
+leaf_site_trt$delta_lai = ((leaf_site_trt$spp_lai_mean.y - 
+                              leaf_site_trt$spp_lai_mean.x) / leaf_site_trt$spp_lai_mean.x) * 100
+leaf_site_trt$delta_live_mass = ((leaf_site_trt$spp_live_mass_mean.y - 
+                                    leaf_site_trt$spp_live_mass_mean.x) / leaf_site_trt$spp_live_mass_mean.x) * 100
 leaf_site_trt$delta_chi = ((leaf_site_trt$chi_mean.y - 
                               leaf_site_trt$chi_mean.x) / leaf_site_trt$chi_mean.x) * 100
+leaf_site_trt$delta_lma = ((leaf_site_trt$lma_mean.y - 
+                              leaf_site_trt$lma_mean.x) / leaf_site_trt$lma_mean.x) * 100
+
+## check variables
+hist(leaf_site_trt$delta_narea)
+hist(subset(leaf_site_trt, delta_narea < 400)$delta_narea)
+hist(log(subset(leaf_site_trt, delta_narea < 400)$delta_narea + 100))
+hist(subset(leaf_site_trt, delta_narea < 200)$delta_narea)
+hist(log(subset(leaf_site_trt, delta_narea < 200)$delta_narea + 100))
+hist(subset(leaf_site_trt, max_cover_mean.x > 30 & max_cover_mean.y > 30)$delta_narea)
+hist(leaf_site_trt$delta_lai)
+hist(subset(leaf_site_trt, delta_lai < 800)$delta_lai)
+hist(log(subset(leaf_site_trt, delta_lai < 800 & delta_lai > -10)$delta_lai + 100))
+hist(subset(leaf_site_trt, max_cover_mean.x > 10 & max_cover_mean.y > 10)$delta_lai)
+hist(leaf_site_trt$delta_live_mass)
+hist(subset(leaf_site_trt, delta_live_mass < 1000)$delta_live_mass)
+hist(leaf_site_trt$delta_lma)
+hist(subset(leaf_site_trt, delta_lma < 5000)$delta_lma)
+hist(leaf_site_trt$delta_chi)
 
 
 ### model response
-delta_lai_lm = lm(delta_narea ~ delta_lai, 
-                  data = subset(leaf_site_trt, site_code != 'burrawan.au')) # extreme outlier
+delta_lai_lm = lmer(delta_narea ~ delta_lai + 
+                      delta_lai:Ptrt_fac +
+                      delta_lai:Ktrt_fac +
+                      delta_lai:delta_lma +
+                      delta_lai:Ptrt_fac:Ktrt_fac +
+                      # log(delta_lai + 100):Ptrt_fac:delta_lma +
+                      # log(delta_lai + 100):Ktrt_fac:delta_lma +
+                      # log(delta_lai + 100):Ptrt_fac:Ktrt_fac:delta_lma +
+                      (1|Taxon) + (1|Taxon:site_code)+ (1|Taxon:site_code:block_fac), 
+                  # data = subset(leaf_site_trt, max_cover_mean.x > 30 & max_cover_mean.y > 30)) # extreme outlier
+                  data = subset(leaf_site_trt, delta_narea < 1000 & delta_lai < 1000 & delta_lma < 1000))
                   # data = leaf_site_trt)
 plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
 Anova(delta_lai_lm)
 summary(delta_lai_lm)
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lma'))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai'))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25)))
+test(emtrends(delta_lai_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_lai', at = list(delta_lma = -25)))
+test(emtrends(delta_lai_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_lai', at = list(delta_lma = 0)))
+test(emtrends(delta_lai_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_lai', at = list(delta_lma = 25)))
+test(emtrends(delta_lai_lm, ~Ptrt_fac, var = 'delta_lai'))
+cld(emtrends(delta_lai_lm, ~Ptrt_fac, var = 'delta_lai'))
 
-delta_live_mass_lm = lm(delta_narea ~ delta_live_mass, 
-              data = subset(leaf_site_trt, site_code != 'burrawan.au'))
+delta_live_mass_lm = lmer(delta_narea ~ delta_live_mass + 
+                            delta_live_mass:Ptrt_fac +
+                            delta_live_mass:Ktrt_fac +
+                            # delta_live_mass:delta_lma +
+                            delta_live_mass:Ptrt_fac:Ktrt_fac +
+                          # delta_live_mass:Ptrt_fac:delta_lma +
+                          # delta_live_mass:Ktrt_fac:delta_lma +
+                          # delta_live_mass:Ptrt_fac:Ktrt_fac:delta_lma +
+                          (1|Taxon) + (1|Taxon:site_code)+ (1|Taxon:site_code:block_fac), 
+              data = subset(leaf_site_trt, delta_narea < 1000 & delta_live_mass < 1000 & delta_lma < 1000))
 plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
 Anova(delta_live_mass_lm)
 summary(delta_live_mass_lm)
+test(emtrends(delta_live_mass_lm, ~1, var = 'delta_lma'))
+test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass'))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25)))
+test(emtrends(delta_live_mass_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_live_mass'))
 
-
-delta_plot = ggplot(data = subset(leaf_site_trt, site_code != 'burrawan.au'), 
-       aes(x = delta_lai, y = delta_narea)) +
+delta_plot = ggplot(data = subset(leaf_site_trt, delta_narea < 400 & delta_lai < 800), 
+       aes(x = delta_lai, y = delta_narea, colour = Ptrt_fac, size = delta_lma)) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
@@ -554,8 +612,9 @@ delta_plot = ggplot(data = subset(leaf_site_trt, site_code != 'burrawan.au'),
         axis.text.y=element_text(size=rel(2), colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
-  geom_point(size = 4, alpha = 0.8) +
-  geom_smooth(method='lm', colour = 'black') +
+  geom_point(alpha = 0.5) +
+  scale_colour_manual(values = c('black', 'red')) +
+  # geom_smooth(method='lm', colour = 'black') +
   ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
   xlab(expression('∆' *'LAI' * ' (%)'))
 
@@ -563,5 +622,6 @@ jpeg(filename = "plots/delta_plot.jpeg", width = 400, height = 450, units = 'px'
 plot(delta_plot)
 dev.off()
 
+### revised analysis at the species level
 
 

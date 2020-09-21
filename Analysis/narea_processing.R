@@ -24,9 +24,9 @@ head(traits)
 # traits = filter(traits, site_code %in% overlap)
 
 ## make sure factors are correctly defined
-traits$Ntrt_fac = as.factor(traits$Ntrt_fac)
-traits$Ptrt_fac = as.factor(traits$Ptrt_fac)
-traits$Ktrt_fac = as.factor(traits$Ktrt_fac)
+traits$Ntrt_fac = as.factor(traits$Ntrt)
+traits$Ptrt_fac = as.factor(traits$Ptrt)
+traits$Ktrt_fac = as.factor(traits$Ktrt)
 
 ## add in photosynthetic pathway information
 levels(traits$Family) # check Amaranthaceae, Asteraceae, Boraginaceae, Caryophyllaceae, Cyperaceae, Euphorbiaceae,
@@ -86,7 +86,16 @@ subset(traits_site_count, n <=30)
 #                   site_code != 'konz.us' &
 #                   site_code != 'saline.us') # remove sites without much leaf data (mostly due to bad chi values)
 
-write.csv(traits, '../Data/processed/traits.csv')
+## add in species composition data
+cover = read.csv('../Data/full-cover-31-August-2020.csv')
+head(cover)
+
+cover_select = select(cover, site_code, plot, year, Taxon, max_cover)
+
+traits_w_cover = left_join(traits, cover_select)
+traits_w_cover$spp_lai = traits_w_cover$lai * (traits_w_cover$max_cover/100)
+
+# write.csv(traits_w_cover, '../Data/processed/traits.csv')
 
 traits_group_by_site = group_by(traits, 
                                     site_code, plot, block, trt, Ntrt, Ptrt, Ktrt)
@@ -103,4 +112,4 @@ traits_site = summarise(traits_group_by_site,
                             p_pet_mean = mean(p_pet, na.rm = T),
                             live_mass_mean = mean(live_mass, na.rm = T))
 
-write.csv(traits_site, '../Data/processed/traits_site.csv')
+# write.csv(traits_site, '../Data/processed/traits_site.csv')
