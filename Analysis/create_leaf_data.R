@@ -17,7 +17,7 @@ library(ggplot2)
 # read in and modify foliar trait dataset (Jen Firn)
 #########################################
 
-leaf = read.csv('./Data/NutNet-foliar-traits-7JAN2017.csv')
+leaf = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')
 
 leaf[leaf == 'NULL'] <- NA
 
@@ -30,19 +30,19 @@ leaf$Ptrt = 0
 leaf$Ptrt[leaf$trt == 'P' | leaf$trt == 'NP' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1
 leaf$Ktrt = 0
 leaf$Ktrt[leaf$trt == 'K' | leaf$trt == 'NK' | leaf$trt == 'PK' | leaf$trt == 'NPK' | leaf$trt == 'NPK+Fence'] = 1
-
-leaf$Ntrt_fac = as.factor(leaf$Ntrt)
-leaf$Ptrt_fac = as.factor(leaf$Ptrt)
-leaf$Ktrt_fac = as.factor(leaf$Ktrt)
-
-leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)
-leaf$Nmass = ((leaf$leaf_pct_N/100) * leaf$leaf_dry_mass_g) *1000 # puts in mg/g N
+# 
+# leaf$Ntrt_fac = as.factor(leaf$Ntrt)
+# leaf$Ptrt_fac = as.factor(leaf$Ptrt)
+# leaf$Ktrt_fac = as.factor(leaf$Ktrt)
+# 
+# leaf$Narea = leaf$leaf_pct_N * (1/leaf$SLA)
+# leaf$Nmass = ((leaf$leaf_pct_N/100) * leaf$leaf_dry_mass_g) *1000 # puts in mg/g N
 
 leaf$Nfix = 'no'
 leaf$Nfix[leaf$Family == 'Fabaceae'] = 'yes'
 
 # add core data to the dataset
-core = read.csv('./Data/comb-by-plot-09-April-2018.csv')
+core = read.csv('../Data/comb-by-plot-09-April-2018.csv')
 core[core == 'NULL'] <- NA
 
 core[, 26:45] <- sapply(core[, 26:45], as.character)
@@ -56,21 +56,21 @@ leaf_core_data = join(leaf, core_data, by = c("site_code", "year", "block", "plo
 leaf_core = join(leaf_core_data, core_info, by = c("site_code", "block", "plot", "trt"), type = 'left', match = 'first')
 
 # add SPEI to "leaf_core" data
-spei = read.csv('./Data/CRU-annual_2018-07-06.csv')
+spei = read.csv('../Data/CRU-annual_2018-07-06.csv')
 spei$p_pet = spei$precip / spei$PET
 
 leaf_core_spei = join(leaf_core, spei, by = c("site_code", "year"), type = 'left', match = 'first')
 
 # check
-nrow(leaf)
-nrow(leaf_core) # some core data matches the leaf data twice...
-nrow(leaf_core_spei)
+# nrow(leaf)
+# nrow(leaf_core) # some core data matches the leaf data twice...
+# nrow(leaf_core_spei)
 
 # read in gs climate (>0°C)
-tmp_globe = read.csv('./Analysis/climate_gridded/cru_tmp_climExtract_growingseason_globe.csv')
-par_globe = read.csv('./Analysis/climate_gridded/cru_par_climExtract_growingseason_globe.csv')
-vpd_globe = read.csv('./Analysis/climate_gridded/cru_vpd_climExtract_growingseason_globe.csv')
-z_globe =  read.csv('./Analysis/climate_gridded/z_globe.csv')
+tmp_globe = read.csv('../Analysis/climate_gridded/cru_tmp_climExtract_growingseason_globe.csv')
+par_globe = read.csv('../Analysis/climate_gridded/cru_par_climExtract_growingseason_globe.csv')
+vpd_globe = read.csv('../Analysis/climate_gridded/cru_vpd_climExtract_growingseason_globe.csv')
+z_globe =  read.csv('../Analysis/climate_gridded/z_globe.csv')
 
 leaf_core_spei$tmp = NA
 leaf_core_spei$par = NA
@@ -143,7 +143,7 @@ leaf_core_spei$z = climate_df[, 4]
 ########################################################
 # add species information
 ########################################################
-info = read.csv('./Data/full-species-info-25-January-2019.csv')
+info = read.csv('../Data/full-species-info-25-January-2019.csv')
 code_taxon_data = paste(toupper(leaf_core_spei$site_code), toupper(leaf_core_spei$Taxon), sep = ' ')
 
 info_caps = mutate_all(info, .funs = toupper)

@@ -1,9 +1,7 @@
 # calculate the ratio of ci/ca
 
-calc_chi = function(temp, z, vpdo, cao){ # temp in °C, z in m, vpd in kPa, ca in ppm
-	
-	beta = 146 
-	
+calc_chi = function(temp, z, vpdo, cao, beta = 146){ # temp in °C, z in m, vpd in kPa, ca in ppm
+
 	patm = calc_patm(z) 
 	
 	vpd = calc_vpd(temp, z, vpdo) 

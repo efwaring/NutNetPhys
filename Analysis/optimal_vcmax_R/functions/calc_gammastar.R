@@ -16,7 +16,7 @@ calc_gammastar_pa = function(temp, z) {
 	temp_k = 273.15+ temp
 	
 	gStar_pa = gammastar25*exp((Hgm/R)*(1/298.15-1/temp_k))
-		
+	
 	gStar_pa
 	
 }
