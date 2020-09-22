@@ -96,7 +96,31 @@ traits_w_cover = left_join(traits, cover_select)
 traits_w_cover$spp_lai = traits_w_cover$lai * (traits_w_cover$max_cover/100)
 traits_w_cover$spp_live_mass = traits_w_cover$live_mass * (traits_w_cover$max_cover / 100)
 
-# write.csv(traits_w_cover, '../Data/processed/traits.csv')
+## add in plot biomass nutrient information
+biomass_nutrients = read.csv('../Data/full-biomass-nutrients-06-December-2017.csv')
+biomass_nutrients$pct_C = as.numeric(as.character(biomass_nutrients$pct_C))
+biomass_nutrients$pct_N = as.numeric(as.character(biomass_nutrients$pct_N))
+biomass_nutrients$pct_P = as.numeric(as.character(biomass_nutrients$pct_P))
+biomass_nutrients$pct_K = as.numeric(as.character(biomass_nutrients$pct_K))
+biomass_nutrients$pct_Mg = as.numeric(as.character(biomass_nutrients$pct_Mg))
+biomass_nutrients$pct_Ca = as.numeric(as.character(biomass_nutrients$pct_Ca))
+
+biomass_nutrients_live = subset(biomass_nutrients, live == 1)
+
+biomass_nutrients_live_group = group_by(biomass_nutrients_live,
+                                        site_code, year, plot)
+biomass_nutrients_live_mean = summarise(biomass_nutrients_live_group,
+                                        pct_C_mean = mean(pct_C, na.rm = T),
+                                        pct_N_mean = mean(pct_N, na.rm = T),
+                                        pct_P_mean = mean(pct_P, na.rm = T),
+                                        pct_K_mean = mean(pct_K, na.rm = T),
+                                        pct_Mg_mean = mean(pct_Mg, na.rm = T),
+                                        pct_Ca_mean = mean(pct_Ca, na.rm = T))
+
+traits_w_cover_w_biomass_nut = left_join(traits_w_cover, biomass_nutrients_live_mean)
+traits_w_cover_w_biomass_nut$spp_mass_N = traits_w_cover_w_biomass_nut$spp_live_mass * (traits_w_cover_w_biomass_nut$pct_N_mean/100)
+
+# write.csv(traits_w_cover_w_biomass_nut, '../Data/processed/traits.csv')
 
 traits_group_by_site = group_by(traits, 
                                     site_code, plot, block, trt, Ntrt, Ptrt, Ktrt)
