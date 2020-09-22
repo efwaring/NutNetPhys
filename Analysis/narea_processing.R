@@ -94,6 +94,7 @@ cover_select = select(cover, site_code, plot, year, Taxon, max_cover)
 
 traits_w_cover = left_join(traits, cover_select)
 traits_w_cover$spp_lai = traits_w_cover$lai * (traits_w_cover$max_cover/100)
+traits_w_cover$spp_live_mass = traits_w_cover$live_mass * (traits_w_cover$max_cover / 100)
 
 # write.csv(traits_w_cover, '../Data/processed/traits.csv')
 
