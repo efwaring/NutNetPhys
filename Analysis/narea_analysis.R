@@ -153,13 +153,21 @@ leaf$Ptrt_fac = as.factor(leaf$Ptrt)
 leaf$Ktrt_fac = as.factor(leaf$Ktrt)
 leaf$block_fac = as.factor(leaf$block)
 leaf$tmp_scaled = leaf$tmp - 25
+leaf$pft <- leaf$functional_group
+leaf$pft[leaf$pft == 'NULL'] <- NA
+leaf$grass <- 'no'
+leaf$grass[leaf$pft == 'GRASS'] <- 'yes'
+leaf$fence <- 'no'
+leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 # leaf_Nonly = subset(leaf, Ptrt_fac == '0' & Ktrt_fac == '0')
+leaf_chi_subset = subset(leaf, chi > 0.2 & chi < 0.95) # lose 700 points
 
 # hist(leaf$chi)
 # hist(log(leaf$Narea))
 leafchi_lmer = lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + log(vpd) + z +
+                      Nfix + photosynthetic_pathway +
                       (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
-                    data = subset(leaf, chi > 0.2 & chi < 0.95))
+                    data = leaf_chi_subset)
 # plot(resid(leafchi_lmer) ~ fitted(leafchi_lmer))
 summary(leafchi_lmer)
 Anova(leafchi_lmer)
@@ -168,8 +176,9 @@ cld(emmeans(leafchi_lmer, ~Ntrt_fac))
   abs(summary(emmeans(leafchi_lmer, ~Ntrt_fac))[1,2])
 
 leaflma_lmer = lmer(log(lma) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + log(vpd) + z +
+                      Nfix + photosynthetic_pathway +
                       (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
-                    data = subset(leaf, chi > 0.2 & chi < 0.95))
+                    data = leaf_chi_subset)
 # plot(resid(leaflma_lmer) ~ fitted(leaflma_lmer))
 summary(leaflma_lmer)
 Anova(leaflma_lmer)
@@ -180,10 +189,11 @@ cld(emmeans(leaflma_lmer, ~Ntrt_fac))
 ### run analyses
 # hist(leaf$narea)
 # hist(log(leaf$narea))
-leafNarea_lmer = lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + tmp + log(par) +
+leafNarea_lmer = lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + 
+                        tmp + log(par) +  log(vpd) + z +
                         log(lma) + Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
-                      data = subset(leaf, chi > 0.2 & chi < 0.95))
+                      data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
 Anova(leafNarea_lmer)
 summary(leafNarea_lmer)
@@ -204,7 +214,7 @@ test(emtrends(leafNarea_lmer, ~1, var = 'log(par)'))
 calc.relip.mm(leafNarea_lmer)
 
 ### make figure
-narea_plot = ggplot(data = subset(leaf, chi > 0.2 & chi < 0.95), 
+narea_plot = ggplot(data = leaf_chi_subset, 
                          aes(x = Ntrt_fac, y = log(narea))) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(4), colour = 'black'),
@@ -329,7 +339,7 @@ npred_soil_lmer = lmer(log(narea) ~ lognphoto + lognstructure +
                          Ntrt_fac * Ptrt_fac * Ktrt_fac +
                          Nfix + photosynthetic_pathway +
                          (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac),
-                  data = subset(leaf, chi > 0.2 & chi < 0.95))
+                  data = leaf_chi_subset)
 plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
 Anova(npred_soil_lmer)
 summary(npred_soil_lmer)
@@ -343,7 +353,7 @@ nphoto_trend_lowN = nphoto_intercept_lowN + lognphoto_seq * nphoto_slope
 nphoto_trend_highN = nphoto_intercept_highN + lognphoto_seq * nphoto_slope
 nphoto_trend = as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_trend_highN))
 
-npred_photo_plot = ggplot(data = leaf, 
+npred_photo_plot = ggplot(data = leaf_chi_subset, 
                     aes(x = lognphoto, y = log(narea), color = Ntrt_fac)) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
@@ -370,7 +380,7 @@ nstructure_trend_lowN = nstructure_intercept_lowN + lognstructure_seq * nstructu
 nstructure_trend_highN = nstructure_intercept_highN + lognstructure_seq * nstructure_slope
 nstructure_trend = as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN, nstructure_trend_highN))
 
-npred_structure_plot = ggplot(data = leaf, 
+npred_structure_plot = ggplot(data = leaf_chi_subset, 
                               aes(x = lognstructure, y = log(narea), color = Ntrt_fac)) +
   theme(legend.position = c(0, 1),
         legend.justification = c(0, 1),
@@ -432,7 +442,8 @@ leaf_site$block_fac = as.factor(leaf_site$block)
 
 # hist(leaf_site_Nonly$lai_mean)
 # hist(log(leaf_site_Nonly$lai_mean))
-lai_lmer = lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + 
+lai_lmer = lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
+                  tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
                   (1|site_code) + (1|site_code:block), 
                 data = leaf_site)
 # plot(resid(lai_lmer) ~ fitted(lai_lmer))
@@ -447,7 +458,8 @@ calc.relip.mm(lai_lmer)
 
 # hist(leaf_site_Nonly$live_mass_mean)
 # hist(log(leaf_site_Nonly$live_mass_mean))
-live_mass_lmer = lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + 
+live_mass_lmer = lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
+                        tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
                         (1|site_code) + (1|site_code:block), 
                       data = leaf_site)
 # # plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
@@ -518,18 +530,12 @@ dev.off()
 ### calculate deltas (per species per treatment type per block per site)
 #### questions: should we include block into the grouping? this yields 2692 observations
 #### removing block (and plot) yields 1267 obs
-leaf$pft <- leaf$functional_group
-leaf$pft[leaf$pft == 'NULL'] <- NA
-leaf$grass <- 'no'
-leaf$grass[leaf$pft == 'GRASS'] <- 'yes'
-leaf$fence <- 'no'
-leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 
-leaf_site_N_group_by = group_by(leaf, 
+leaf_site_N_group_by = group_by(leaf_chi_subset, 
                                 site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac,
                                 block_fac,
                                 fence, trt, plot,
-                                Taxon, grass, Nfix)
+                                Taxon, grass, Nfix, photosynthetic_pathway)
 leaf_site_N = summarise(leaf_site_N_group_by,
                         n = n(),
                         narea_mean = mean(narea, na.rm = T),
@@ -540,7 +546,8 @@ leaf_site_N = summarise(leaf_site_N_group_by,
                         max_cover_mean = mean(max_cover, na.rm = T),
                         lma_mean = mean(lma, na.rm = T),
                         p_pet_mean = mean(p_pet, na.rm = T),
-                        vpd_mean = mean(vpd, na.rm = T))
+                        vpd_mean = mean(vpd, na.rm = T),
+                        tmp_mean = mean(tmp, na.rm = T))
 # leaf_site_N$PKtrt_fac = as.factor(paste(leaf_site_N$Ptrt_fac, leaf_site_N$Ktrt_fac, sep = ''))
 leaf_site_lowN = subset(leaf_site_N, Ntrt_fac == '0')
 leaf_site_highN = subset(leaf_site_N, Ntrt_fac == '1')
@@ -551,7 +558,7 @@ leaf_site_trt = left_join(leaf_site_lowN, leaf_site_highN,
                                        'block_fac', 
                                        'Ptrt_fac', 'Ktrt_fac',
                                        'fence',
-                                       'Taxon', 'grass', 'Nfix'))
+                                       'Taxon', 'grass', 'Nfix', 'photosynthetic_pathway'))
 nrow(leaf_site_trt)
 
 leaf_site_trt$delta_narea = ((leaf_site_trt$narea_mean.y - 
@@ -576,6 +583,7 @@ delta_lai_mad = mad(leaf_site_trt$delta_lai, na.rm = T)
 delta_lma_mad = mad(leaf_site_trt$delta_lma, na.rm = T)
 delta_live_mass_mad = mad(leaf_site_trt$delta_live_mass, na.rm = T)
 delta_N_mass_mad = mad(leaf_site_trt$delta_N_mass, na.rm = T)
+delta_chi_mad = mad(leaf_site_trt$delta_chi, na.rm = T)
 
 
 hist(leaf_site_trt$delta_narea)
@@ -604,174 +612,160 @@ hist(subset(leaf_site_trt, delta_lma < 3 * delta_lma_mad &
               delta_lma > 3 * -delta_lma_mad)$delta_lma)
 
 hist(leaf_site_trt$delta_chi)
+sort(leaf_site_trt$delta_chi)
+hist(subset(leaf_site_trt, delta_chi < 3 * delta_chi_mad & delta_chi > 3 * -delta_chi_mad)$delta_chi)
+
 
 ### model response
 delta_lai_data = subset(leaf_site_trt, 
                         delta_narea < 3 * delta_narea_mad & 
                           delta_narea > 3 * -delta_narea_mad & 
-                          # delta_lma < 3 * delta_lma_mad &
-                          # delta_lma > 3 * -delta_lma_mad &
+                          delta_lma < 3 * delta_lma_mad &
+                          delta_lma > 3 * -delta_lma_mad &
                           delta_lai < 3 * delta_lai_mad & 
-                          delta_lai > 3 * -delta_lai_mad)
+                          delta_lai > 3 * -delta_lai_mad &
+                          delta_chi < 3 * delta_chi_mad & 
+                          delta_chi > 3 * -delta_chi_mad)
+sort(delta_lai_data$delta_narea)
 
 delta_lai_lm = lmer(delta_narea ~ delta_lai + 
-                      # delta_lai*p_pet_mean.x +
-                      (1|p_pet_mean.x) + #(1|delta_live_mass:p_pet_mean.x) +
-                      delta_lai * grass +
-                      delta_lai * Nfix +
-                      # delta_lai*vpd_mean.x +
-                      # delta_lai:Ptrt_fac +
-                      # delta_lai:Ktrt_fac +
-                      # delta_lai*delta_lma +
-                      delta_lai*Ptrt_fac*Ktrt_fac +
-                      # log(delta_lai + 100):Ptrt_fac:delta_lma +
-                      # log(delta_lai + 100):Ktrt_fac:delta_lma +
-                      # log(delta_lai + 100):Ptrt_fac:Ktrt_fac:delta_lma +
-                      # (1|Ptrt_fac) + (1|Ktrt_fac) + (1|Ptrt_fac:Ktrt_fac) +
+                      Ptrt_fac * Ktrt_fac +
+                      photosynthetic_pathway + Nfix +
+                      delta_lai * delta_lma * delta_chi +
                       (1|Taxon) + (1|Taxon:site_code) +
                       (1|Taxon:site_code:block_fac), 
                   data = delta_lai_data)
-                  # data = leaf_site_trt)
 plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
 Anova(delta_lai_lm)
 summary(delta_lai_lm)
-# test(emtrends(delta_lai_lm, ~1, var = 'delta_lma'))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lma'))
 test(emtrends(delta_lai_lm, ~1, var = 'delta_lai'))
-cld(emmeans(delta_lai_lm, ~pft))
-cld(emmeans(delta_lai_lm, ~Ptrt_fac))
-# test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -2))) # average
-# test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25)))
-# test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0)))
-# test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25)))
-test(emtrends(delta_lai_lm, ~Ktrt_fac, var = 'delta_lai'))
-# test(emtrends(delta_lai_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_lai', at = list(delta_lma = -25)))
-# test(emtrends(delta_lai_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_lai', at = list(delta_lma = 0)))
-# test(emtrends(delta_lai_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_lai', at = list(delta_lma = 25)))
-# test(emtrends(delta_lai_lm, ~Ptrt_fac, var = 'delta_lai'))
-# cld(emtrends(delta_lai_lm, ~Ptrt_fac, var = 'delta_lai'))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25, delta_chi = -15)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0, delta_chi = -15)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25, delta_chi = -15)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25, delta_chi = 0)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0, delta_chi = 0)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25, delta_chi = 0)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25, delta_chi = 15)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0, delta_chi = 15)))
+test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25, delta_chi = 15))) ## only one!
 
 delta_live_mass_data = subset(leaf_site_trt, 
                               delta_narea < 3 * delta_narea_mad & 
                                 delta_narea > 3 * -delta_narea_mad &
-                                # delta_lma < 3 * delta_lma_mad &
-                                # delta_lma > 3 * -delta_lma_mad &
+                                delta_lma < 3 * delta_lma_mad &
+                                delta_lma > 3 * -delta_lma_mad &
                                 delta_live_mass < 3 * delta_live_mass_mad & 
-                                delta_live_mass > 3 * -delta_live_mass_mad)
+                                delta_live_mass > 3 * -delta_live_mass_mad &
+                                delta_chi < 3 * delta_chi_mad &
+                                delta_chi > 3 * -delta_chi_mad)
 
 delta_live_mass_lm = lmer(delta_narea ~ delta_live_mass + 
-                            # delta_live_mass*p_pet_mean.x +
-                            # p_pet_mean.x +
-                            (1|p_pet_mean.x) + #(1|delta_live_mass:p_pet_mean.x) +
-                            delta_live_mass * grass +
-                            delta_live_mass * Nfix +
-                            # delta_live_mass * photosynthetic_pathway +
-                            # delta_live_mass*vpd_mean.x +
-                            # delta_live_mass:Ptrt_fac +
-                            # delta_live_mass:Ktrt_fac +
-                            # delta_live_mass*delta_lma +
-                            delta_live_mass*Ptrt_fac*Ktrt_fac +
-                            # delta_live_mass:Ptrt_fac:delta_lma +
-                            # delta_live_mass:Ktrt_fac:delta_lma +
-                            # delta_live_mass:Ptrt_fac:Ktrt_fac:delta_lma +
-                            # (1|Ptrt_fac) + (1|Ktrt_fac) + (1|Ptrt_fac:Ktrt_fac) +
-                            (1|Taxon) + (1|Taxon:site_code) + 
+                            Ptrt_fac * Ktrt_fac +
+                            photosynthetic_pathway + Nfix +
+                            delta_live_mass * delta_lma * delta_chi +
+                            (1|Taxon) + (1|Taxon:site_code) +
                             (1|Taxon:site_code:block_fac), 
                         data = delta_live_mass_data)
 plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
 Anova(delta_live_mass_lm)
 summary(delta_live_mass_lm)
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_lma'))
+test(emtrends(delta_live_mass_lm, ~1, var = 'delta_lma'))
 test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass'))
-test(emmeans(delta_live_mass_lm, ~1, at = list(delta_live_mass = 0)))
-emmeans(delta_live_mass_lm, ~1)
-test(emmeans(delta_live_mass_lm, ~Nfix))
-test(emtrends(delta_live_mass_lm, ~Nfix, var = 'delta_live_mass'))
-cld(emtrends(delta_live_mass_lm, ~Nfix, var = 'delta_live_mass'))
-cld(emmeans(delta_live_mass_lm, ~Ptrt_fac))
-test(emtrends(delta_live_mass_lm, ~Ptrt_fac, var = 'delta_live_mass'))
-cld(emtrends(delta_live_mass_lm, ~Ptrt_fac, var = 'delta_live_mass'))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'p_pet_mean.x'))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -2))) # average
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25)))
-# test(emtrends(delta_live_mass_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_live_mass'))
+test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25)))
+test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0))) # marginal
+test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25))) # ding!
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25, delta_chi = -15)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0, delta_chi = -15)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25, delta_chi = -15)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25, delta_chi = 0)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0, delta_chi = 0)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25, delta_chi = 0))) # ding!
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25, delta_chi = 15)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0, delta_chi = 15)))
+# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25, delta_chi = 15)))
 
 delta_N_mass_data = subset(leaf_site_trt, 
                               delta_narea < 3 * delta_narea_mad & 
                                 delta_narea > 3 * -delta_narea_mad &
-                                # delta_lma < 3 * delta_lma_mad &
-                                # delta_lma > 3 * -delta_lma_mad &
+                                delta_lma < 3 * delta_lma_mad &
+                                delta_lma > 3 * -delta_lma_mad &
                                 delta_N_mass < 3 * delta_N_mass_mad & 
-                                delta_N_mass > 3 * -delta_N_mass_mad)
+                                delta_N_mass > 3 * -delta_N_mass_mad &
+                                delta_chi < 3 * delta_chi_mad &
+                                delta_chi > 3 * -delta_chi_mad)
 
 delta_N_mass_lm = lmer(delta_narea ~ delta_N_mass + 
-                            # delta_N_mass*p_pet_mean.x +
-                            # p_pet_mean.x +
-                            (1|p_pet_mean.x) + #(1|delta_N_mass:p_pet_mean.x) +
-                            delta_N_mass * grass +
-                            delta_N_mass * Nfix +
-                            # delta_N_mass * photosynthetic_pathway +
-                            # delta_N_mass*vpd_mean.x +
-                            # delta_N_mass:Ptrt_fac +
-                            # delta_N_mass:Ktrt_fac +
-                            # delta_N_mass*delta_lma +
-                            delta_N_mass*Ptrt_fac*Ktrt_fac +
-                            # delta_N_mass:Ptrt_fac:delta_lma +
-                            # delta_N_mass:Ktrt_fac:delta_lma +
-                            # delta_N_mass:Ptrt_fac:Ktrt_fac:delta_lma +
-                            # (1|Ptrt_fac) + (1|Ktrt_fac) + (1|Ptrt_fac:Ktrt_fac) +
-                            (1|Taxon) + (1|Taxon:site_code) + 
-                            (1|Taxon:site_code:block_fac), 
+                         Ptrt_fac * Ktrt_fac +
+                         Nfix + # photosynthetic_pathway + Nfix + # no C4
+                         delta_N_mass * delta_lma * delta_chi +
+                         (1|Taxon) + (1|Taxon:site_code) +
+                         (1|Taxon:site_code:block_fac), 
                           data = delta_N_mass_data)
 plot(resid(delta_N_mass_lm) ~ fitted(delta_N_mass_lm))
 Anova(delta_N_mass_lm)
 summary(delta_N_mass_lm)
-# test(emtrends(delta_N_mass_lm, ~1, var = 'delta_lma'))
+test(emtrends(delta_N_mass_lm, ~1, var = 'delta_lma'))
 test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass'))
-test(emmeans(delta_N_mass_lm, ~1, at = list(delta_N_mass = 0)))
-emmeans(delta_N_mass_lm, ~1)
-test(emmeans(delta_N_mass_lm, ~Nfix))
-test(emtrends(delta_N_mass_lm, ~Nfix, var = 'delta_N_mass'))
-cld(emtrends(delta_N_mass_lm, ~Nfix, var = 'delta_N_mass'))
-cld(emmeans(delta_N_mass_lm, ~Ptrt_fac))
-test(emmeans(delta_N_mass_lm, ~Ptrt_fac))
-test(emtrends(delta_N_mass_lm, ~Ptrt_fac, var = 'delta_N_mass'))
-cld(emtrends(delta_N_mass_lm, ~Ptrt_fac, var = 'delta_N_mass'))
-# test(emtrends(delta_N_mass_lm, ~1, var = 'p_pet_mean.x'))
-# test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_lma = -2))) # average
-# test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_lma = -25)))
-# test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_lma = 0)))
-# test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_lma = 25)))
-# test(emtrends(delta_N_mass_lm, ~Ptrt_fac*Ktrt_fac, var = 'delta_N_mass'))
+test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_chi = -25)))
+test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_chi = 0)))
+test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_chi = 25)))
 
 ## make delta_plot
 ### dataset
 delta_live_mass_plot_data =  delta_live_mass_data
 
 ### trendline information
-delta_live_mass_plot_intercept = summary(emmeans(delta_live_mass_lm, ~1, at = list(delta_live_mass = 0)))[1, 2]
-delta_live_mass_plot_intercept_Nfix_no = summary(emmeans(delta_live_mass_lm, ~Nfix, at = list(delta_live_mass = 0)))[1, 2]
-delta_live_mass_plot_intercept_Nfix_yes = summary(emmeans(delta_live_mass_lm, ~Nfix, at = list(delta_live_mass = 0)))[2, 2]
-delta_live_mass_plot_slope = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass'))[1, 2]
-delta_live_mass_plot_trend = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  delta_live_mass_plot_intercept
-delta_live_mass_plot_trend_Nfix_no = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  delta_live_mass_plot_intercept_Nfix_no
-delta_live_mass_plot_trend_Nfix_yes = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  delta_live_mass_plot_intercept_Nfix_yes
+# delta_live_mass_plot_intercept = summary(emmeans(delta_live_mass_lm, ~1, at = list(delta_live_mass = 0)))[1, 2]
+# delta_live_mass_plot_intercept_Nfix_no = summary(emmeans(delta_live_mass_lm, ~Nfix, at = list(delta_live_mass = 0)))[1, 2]
+# delta_live_mass_plot_intercept_Nfix_yes = summary(emmeans(delta_live_mass_lm, ~Nfix, at = list(delta_live_mass = 0)))[2, 2]
+# delta_live_mass_plot_slope = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass'))[1, 2]
+# delta_live_mass_plot_trend = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+#   delta_live_mass_plot_intercept
+# delta_live_mass_plot_trend_Nfix_no = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+#   delta_live_mass_plot_intercept_Nfix_no
+# delta_live_mass_plot_trend_Nfix_yes = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+#   delta_live_mass_plot_intercept_Nfix_yes
+# 
+# delta_live_mass_plot_trend_df = data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1),
+#                                     delta_live_mass_plot_trend, delta_live_mass_plot_trend_Nfix_no, delta_live_mass_plot_trend_Nfix_yes)
+# colnames(delta_live_mass_plot_trend_df) = c('delta_live_mass', 'delta_narea', 'delta_narea_Nfix_no', 'delta_narea_Nfix_yes')
 
-delta_live_mass_plot_trend_df = data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1),
-                                    delta_live_mass_plot_trend, delta_live_mass_plot_trend_Nfix_no, delta_live_mass_plot_trend_Nfix_yes)
-colnames(delta_live_mass_plot_trend_df) = c('delta_live_mass', 'delta_narea', 'delta_narea_Nfix_no', 'delta_narea_Nfix_yes')
+delta_live_mass_plot_intercept_lowlma = summary(emmeans(delta_live_mass_lm, ~1, 
+                                              at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2]
+delta_live_mass_plot_slope_lowlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', 
+                                           at = list(delta_lma = -25)))[1, 2]
+delta_live_mass_plot_intercept_midlma = summary(emmeans(delta_live_mass_lm, ~1, 
+                                              at = list(delta_live_mass = 0, delta_lma = 0)))[1, 2]
+delta_live_mass_plot_slope_midlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', 
+                                           at = list(delta_lma = 0)))[1, 2]
+delta_live_mass_plot_intercept_highlma = summary(emmeans(delta_live_mass_lm, ~1, 
+                                              at = list(delta_live_mass = 0, delta_lma = 25)))[1, 2]
+delta_live_mass_plot_slope_highlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', 
+                                           at = list(delta_lma = 25)))[1, 2]
+delta_live_mass_plot_trend_lowlma = delta_live_mass_plot_slope_lowlma * 
+  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+  delta_live_mass_plot_intercept_lowlma
+delta_live_mass_plot_trend_midlma = delta_live_mass_plot_slope_midlma * 
+  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+  delta_live_mass_plot_intercept_midlma
+delta_live_mass_plot_trend_highlma = delta_live_mass_plot_slope_highlma * 
+  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+  delta_live_mass_plot_intercept_highlma
 
-# delta_plot_intercept_lowlma = summary(emmeans(delta_live_mass_lm, ~1, at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2]
-# delta_plot_slope_lowlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25)))[1, 2]
-# delta_plot_trend = delta_plot_slope * seq(min(delta_plot_data$delta_live_mass), max(delta_plot_data$delta_live_mass), 1) +
-#   delta_plot_intercept
+delta_live_mass_plot_trend_df = data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), 
+                                               max(delta_live_mass_plot_data$delta_live_mass), 1),
+                                    delta_live_mass_plot_trend_lowlma, 
+                                    delta_live_mass_plot_trend_midlma, 
+                                    delta_live_mass_plot_trend_highlma)
+colnames(delta_live_mass_plot_trend_df) = c('delta_live_mass', 
+                                            'delta_narea_lowlma', 
+                                            'delta_narea_midlma', 
+                                            'delta_narea_highlma')
+
 
 delta_live_mass_plot = ggplot(data = delta_live_mass_plot_data, 
-       aes(x = delta_live_mass, y = delta_narea, colour = Nfix)) +
+       aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
   theme(legend.position = "none", 
         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
@@ -779,14 +773,20 @@ delta_live_mass_plot = ggplot(data = delta_live_mass_plot_data,
         axis.text.y=element_text(size=rel(2), colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
-  geom_point(alpha = 0.4, size = 2) +
-  scale_colour_manual(values = c('black', 'green')) +
-  # geom_smooth(method='lm', colour = 'black') +
-  # geom_line(data = delta_plot_trend_df, aes(x = delta_live_mass, y = delta_narea), size = 4) +
-  geom_line(data = delta_live_mass_plot_trend_df, aes(x = delta_live_mass, y = delta_narea_Nfix_no), 
-            size = 4, colour = 'black', alpha = 0.7) +
-  geom_line(data = delta_live_mass_plot_trend_df, aes(x = delta_live_mass, y = delta_narea_Nfix_yes), 
-            size = 4, colour = 'green', alpha = 0.7) +
+  geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.7) +
+  scale_size_continuous(range = c(1, 3)) +
+  scale_fill_gradient(low = 'blue', high = 'red') +
+  geom_line(data = delta_live_mass_plot_trend_df, 
+            aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
+            size = 3, colour = 'blue', alpha = 1, lty = 2) +
+  geom_line(data = delta_live_mass_plot_trend_df, 
+            aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
+            size = 3, colour = 'purple', alpha = 1, lty = 2) +
+  geom_line(data = delta_live_mass_plot_trend_df, 
+            aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
+            size = 3, colour = 'red', alpha = 1, lty = 1) +
+  # geom_line(data = delta_live_mass_plot_trend_df, aes(x = delta_live_mass, y = delta_narea_Nfix_yes), 
+  #           size = 4, colour = 'green', alpha = 0.7) +
   # ylim(c(-50, 50)) +
   ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
   xlab(expression('∆' *'AG Biomass' * ' (%)'))
