@@ -319,7 +319,7 @@ leaf$vpmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$vpmax[l
 
 leaf$nrubisco = fvcmax25_nrubisco(leaf$vcmax25)
 leaf$nbioe = fjmax25_nbioe(leaf$jmax25)
-leaf$npep = fvcmax25_nrubisco(leaf$vpmax25)
+leaf$npep = fvpmax25_npep(leaf$vpmax25)
 leaf$nstructure = flma_nstructure(leaf$lma)
 leaf$nall = leaf$nrubisco + leaf$nbioe + leaf$nstructure + leaf$npep
 leaf$nphoto = leaf$nrubisco + leaf$nbioe + leaf$npep
@@ -443,7 +443,7 @@ leaf_site$block_fac = as.factor(leaf_site$block)
 # hist(leaf_site_Nonly$lai_mean)
 # hist(log(leaf_site_Nonly$lai_mean))
 lai_lmer = lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
-                  tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
+                  # tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
                   (1|site_code) + (1|site_code:block), 
                 data = leaf_site)
 # plot(resid(lai_lmer) ~ fitted(lai_lmer))
@@ -459,7 +459,7 @@ calc.relip.mm(lai_lmer)
 # hist(leaf_site_Nonly$live_mass_mean)
 # hist(log(leaf_site_Nonly$live_mass_mean))
 live_mass_lmer = lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
-                        tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
+                        # tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
                         (1|site_code) + (1|site_code:block), 
                       data = leaf_site)
 # # plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
