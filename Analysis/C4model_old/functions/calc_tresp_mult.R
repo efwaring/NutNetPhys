@@ -17,3 +17,6 @@ calc_tresp_mult = function(tleaf, tmean, tref){
 	ktotal <- kbeg*kend # Equation 20 in Smith 2019
 	return(ktotal)
 }
+ 
+
+

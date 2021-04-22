@@ -13,8 +13,7 @@ calc_omega = function(theta, c, m){ # paro in µmol m-2 s-1 and z in m
 	m_star = (4 * c) / quad_root
 
 	omega = ifelse(m < m_star, -(1 - (2 * theta)) - sqrt((1 - theta) * v), -(1 - (2 * theta)) + sqrt((1 - theta) * v))
-
-	# omega <- -(1 - (2 * theta)) - sqrt((1 - theta) * v)
-	return(omega)
+	  
+	omega
 
 }

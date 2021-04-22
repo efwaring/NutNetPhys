@@ -2,9 +2,8 @@
 ## generally follows the analysis structure of Dong et al. (2017) Biogeosciences
 ## but includes the addition of soil N as a predictor
 
-#####################################################################
-## load packages
-#####################################################################
+
+#### load packages ####
 library(tidyverse)
 library(lme4)
 library(car)
@@ -12,123 +11,105 @@ library(r2glmm)
 library(treemapify)
 library(emmeans)
 library(relaimpo)
+library(patchwork)
 
-#####################################################################
-## load functions
-#####################################################################
-# source('optimal_vcmax_R/calc_optimal_vcmax.R')
+#### load functions ####
+### functions to calculate vcmax and jmax for C3 plants 
+source('optimal_vcmax_R/calc_optimal_vcmax.R')
 source('optimal_vcmax_R/calc_optimal_vcmax_knownchi.R')
-sourceDirectory('optimal_vcmax_R/functions')
+sourceDirectory('optimal_vcmax_R/functions', modifiedOnly = FALSE)
+
+### functions to calculate vcmax, jmax, and vpmax for C4 plants
 source('C4model/C4model_knownchi.R')
-sourceDirectory('C4model/functions')
+sourceDirectory('C4model/functions', modifiedOnly = FALSE)
+
+### function to calculate leaf Nrubisco from vcmax
 source('n_from_gas_exchange/n_from_gas_exchange.R')
 
-multiplot <- function(..., plotlist=NULL, cols) {
-  require(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # Make the panel
-  plotCols = cols                          # Number of columns of plots
-  plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
-  
-  # Set up the page
-  grid.newpage()
-  pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
-  vplayout <- function(x, y)
-    viewport(layout.pos.row = x, layout.pos.col = y)
-  
-  # Make each plot, in the correct location
-  for (i in 1:numPlots) {
-    curRow = ceiling(i/plotCols)
-    curCol = (i-1) %% plotCols + 1
-    print(plots[[i]], vp = vplayout(curRow, curCol ))
-  }
-  
-}
-
+### function to scale vcmax to different temperatures
 calc_vcmax_tresp_mult = function(tleaf, tmean, tref){
   
-  temp = tleaf + 273.15
-  Ha= 71513
-  Hd= 200000
-  adelS= 668.39
-  bdelS= -1.07
-  tmeanK=tmean+273.15
-  trefK=tref+273.15
-  R=8.314
-  kbeg=exp(Ha*(temp-trefK)/(trefK*R*temp))
-  kend=((1+exp((trefK*(adelS+bdelS*tmean)-Hd)/(trefK*R)))/(1+exp((temp*(adelS+bdelS*tmean)-Hd)/(temp*R))))
-  kbeg*kend
+  temp <- tleaf + 273.15
+  Ha <- 71513
+  Hd <- 200000
+  adelS <- 668.39
+  bdelS <- -1.07
+  tmeanK <- tmean + 273.15
+  trefK <- tref + 273.15
+  R <- 8.314
+  kbeg <- exp(Ha*(temp - trefK) / (trefK * R * temp))
+  kend <- ((1 + exp((trefK * (adelS + bdelS * tmean) - Hd) / 
+                      (trefK * R))) / (1 + exp((temp * (adelS + bdelS * tmean) - Hd) / (temp * R))))
+  kbeg * kend
   
 }
 
+### function to scale jmax to different temperatures
 calc_jmax_tresp_mult = function(tleaf, tmean, tref){
   
-  temp = tleaf + 273.15
-  Ha= 49884
-  Hd= 200000
-  adelS= 659.7
-  bdelS= -0.75
-  tmeanK=tmean+273.15
-  trefK=tref+273.15
-  R=8.314
-  kbeg=exp(Ha*(temp-trefK)/(trefK*R*temp))
-  kend=((1+exp((trefK*(adelS+bdelS*tmean)-Hd)/(trefK*R)))/(1+exp((temp*(adelS+bdelS*tmean)-Hd)/(temp*R))))
-  kbeg*kend
+  temp <- tleaf + 273.15
+  Ha <- 49884
+  Hd <- 200000
+  adelS <- 659.7
+  bdelS <- -0.75
+  tmeanK <- tmean + 273.15
+  trefK <- tref + 273.15
+  R <- 8.314
+  kbeg <- exp(Ha * (temp - trefK) / (trefK * R * temp))
+  kend <- ((1 + exp((trefK * (adelS + bdelS * tmean) - Hd) / (trefK * R))) / 
+             (1 + exp((temp * (adelS + bdelS * tmean) - Hd) / (temp * R))))
+  kbeg * kend
   
 }
 
-# relative importance for mixed models from https://gist.github.com/BERENZ/e9b581a4b7160357934e
-calc.relip.mm <- function(model,type='lmg') {
+### function to calculate relative importance for mixed models 
+### from https://gist.github.com/BERENZ/e9b581a4b7160357934e
+calc.relip.mm <- function(model,type = 'lmg') {
   if (!isLMM(model) & !isGLMM(model)) {
     stop('Currently supports only lmer/glmer objects', call. = FALSE)
   }
   require(lme4)
   X <- getME(model,'X')
-  X <- X[,-1]
-  Y <- getME(model,'y')
+  X <- X[ , -1]
+  Y <- getME(model, 'y')
   s_resid <- sigma(model)
-  s_effect <- getME(model,'theta')*s_resid
-  s2 <- sum(s_resid^2,s_effect^2)
-  V <- Diagonal(x = s2,n=nrow(X))
-  YX <- cbind(Y,X)
-  cov_XY <- solve( t(YX) %*% solve(V) %*% as.matrix(YX))
+  s_effect <- getME(model, 'theta') * s_resid
+  s2 <- sum(s_resid^2, s_effect^2)
+  V <- Diagonal(x = s2, n = nrow(X))
+  YX <- cbind(Y, X)
+  cov_XY <- solve(t(YX) %*% solve(V) %*% as.matrix(YX))
   colnames(cov_XY) <- rownames(cov_XY) <- colnames(YX)
-  importances <- calc.relimp(as.matrix(cov_XY),rela=F,type=type)
+  importances <- calc.relimp(as.matrix(cov_XY), rela = F, type = type)
   return(importances)
 }
 
-#####################################################################
-## create hypothesis figure
-### leaf N and chi by N supply with different differences in N demand
-#####################################################################
-n_supply_trend = calc_optimal_vcmax(beta = seq(100, 300, 10))
-n_supply_trend$photo_n = fvcmax25_nrubisco(n_supply_trend$vcmax) + fjmax25_nbioe(n_supply_trend$jmax)
-n_supply_trend$photo_n_nobetachange = n_supply_trend$photo_n[10]
 
-hypothesis_data = data.frame(cbind(c(n_supply_trend$beta, n_supply_trend$beta), 
+#### create hypothesis figure ####
+### leaf N and chi by N supply with different differences in N demand
+
+n_supply_trend <- calc_optimal_vcmax(beta = seq(100, 300, 10))
+n_supply_trend$photo_n <- fvcmax25_nrubisco(n_supply_trend$vcmax) + fjmax25_nbioe(n_supply_trend$jmax)
+n_supply_trend$photo_n_nobetachange <- n_supply_trend$photo_n[10]
+
+hypothesis_data <- data.frame(cbind(c(n_supply_trend$beta, n_supply_trend$beta), 
                         c(n_supply_trend$photo_n, n_supply_trend$photo_n_nobetachange),
                         c(rep('no_change', 21), rep('change', 21))))
-colnames(hypothesis_data) = c('beta', 'Narea', 'demand')
-hypothesis_data$beta = as.numeric(as.character(hypothesis_data$beta))
-hypothesis_data$Narea = as.numeric(as.character(hypothesis_data$Narea))
+colnames(hypothesis_data) <- c('beta', 'Narea', 'demand')
+hypothesis_data$beta <- as.numeric(as.character(hypothesis_data$beta))
+hypothesis_data$Narea <- as.numeric(as.character(hypothesis_data$Narea))
 
-hypothesis_plot = ggplot(data = hypothesis_data, 
+(hypothesis_plot <- ggplot(data = hypothesis_data, 
                          aes(x = (1/beta), y = Narea, col = demand)) +
   theme(legend.position = c(0.3, 0.9),
         legend.text = element_text(size = 25),
-        axis.title.y=element_text(size=rel(4), colour = 'black'),
-        axis.title.x=element_text(size=rel(4), colour = 'black'),
-        axis.text.x=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.x=element_blank(),
-        axis.ticks.y=element_blank(),
+        axis.title.y = element_text(size = rel(4), colour = 'black'),
+        axis.title.x = element_text(size = rel(4), colour = 'black'),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(),
         panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey"),
+        panel.grid.major = element_line(colour = "white"),
         legend.background = element_blank(),
         legend.box.background = element_rect(colour = "black")) +
   geom_line(size = 4, aes(linetype = demand, color = demand)) +
@@ -137,154 +118,185 @@ hypothesis_plot = ggplot(data = hypothesis_data,
                       labels = c('∆N demand = ∆N supply', '∆N demand = 0')) +
   guides(color = guide_legend(title = NULL)) +
   ylab(expression('Leaf ' * italic('N')['area'])) +
-  xlab('N supply')
+  xlab('N supply'))
 
-jpeg(filename = "plots/hypothesis_plot.jpeg", width = 600, height = 700, units = 'px')
-plot(hypothesis_plot)
-dev.off()
 
-#####################################################################
-## soil N effects on leaf traits (Narea and chi)
-#####################################################################
+#### soil N effects on leaf traits (Narea and chi) ####
 ### load data
-leaf = read.csv('../Data/processed/traits.csv')
-leaf$Ntrt_fac = as.factor(leaf$Ntrt)
-leaf$Ptrt_fac = as.factor(leaf$Ptrt)
-leaf$Ktrt_fac = as.factor(leaf$Ktrt)
-leaf$block_fac = as.factor(leaf$block)
-leaf$tmp_scaled = leaf$tmp - 25
+leaf <- read.csv('../Data/processed/traits.csv')
+
+## turn treatment numbers into factors
+leaf$Ntrt_fac <- as.factor(leaf$Ntrt)
+leaf$Ptrt_fac <- as.factor(leaf$Ptrt)
+leaf$Ktrt_fac <- as.factor(leaf$Ktrt)
+leaf$block_fac <- as.factor(leaf$block)
+
+## scale temperature data
+leaf$tmp_scaled <- leaf$tmp - 25
+
+## assign plant functional groups
 leaf$pft <- leaf$functional_group
 leaf$pft[leaf$pft == 'NULL'] <- NA
 leaf$grass <- 'no'
 leaf$grass[leaf$pft == 'GRASS'] <- 'yes'
 leaf$fence <- 'no'
 leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
-# leaf_Nonly = subset(leaf, Ptrt_fac == '0' & Ktrt_fac == '0')
+
+## create subset of data where chi is greater than 0.2 and less than 0.95
 leaf_chi_subset = subset(leaf, chi > 0.2 & chi < 0.95) # lose 700 points
 
-# hist(leaf$chi)
-# hist(log(leaf$Narea))
-leafchi_lmer = lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + log(vpd) + z +
-                      Nfix + photosynthetic_pathway +
-                      (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
-                    data = leaf_chi_subset)
-# plot(resid(leafchi_lmer) ~ fitted(leafchi_lmer))
-summary(leafchi_lmer)
-Anova(leafchi_lmer)
-cld(emmeans(leafchi_lmer, ~Ntrt_fac))
-(summary(emmeans(leafchi_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafchi_lmer, ~Ntrt_fac))[1,2]) / 
-  abs(summary(emmeans(leafchi_lmer, ~Ntrt_fac))[1,2])
-
-leaflma_lmer = lmer(log(lma) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + log(vpd) + z +
-                      Nfix + photosynthetic_pathway +
-                      (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
-                    data = leaf_chi_subset)
-# plot(resid(leaflma_lmer) ~ fitted(leaflma_lmer))
-summary(leaflma_lmer)
-Anova(leaflma_lmer)
-cld(emmeans(leaflma_lmer, ~Ntrt_fac))
-(summary(emmeans(leaflma_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leaflma_lmer, ~Ntrt_fac))[1,2]) / 
-  abs(summary(emmeans(leaflma_lmer, ~Ntrt_fac))[1,2])
-
-### run analyses
-# hist(leaf$narea)
-# hist(log(leaf$narea))
-leafNarea_lmer = lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + 
+### linear mixed effects model
+leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + 
                         tmp + log(par) +  log(vpd) + z +
                         log(lma) + Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
-Anova(leafNarea_lmer)
 summary(leafNarea_lmer)
+Anova(leafNarea_lmer)
 
-cld(emmeans(leafNarea_lmer, ~Ntrt_fac))
-(exp(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])) / 
-  exp(abs(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]))
+### make figures
+## find slope and intercept from mixed effects model
+emtrends(leafNarea_lmer, ~tmp, var = "tmp")
+emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0))
+tmp_slope <- summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2] # slope = -0.0276
+tmp_intercept <- summary(emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0)))[1, 2] # intercept = 3.716
+tmp_seq <- seq(min(leaf$tmp, na.rm = T), max(leaf$tmp, na.rm = T), 0.01)
+tmp_trend <- tmp_intercept + tmp_seq * tmp_slope
+tmp_trend <- as.data.frame(cbind(tmp_seq, tmp_trend))
 
-cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))
+(tmp_plot <- ggplot(data = leaf_chi_subset, aes(x = tmp, y = log(narea))) + 
+    geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
+    geom_line(data = tmp_trend, aes(x = tmp_seq, y = tmp_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
+    theme(legend.position = "none", 
+          axis.title.y = element_text(size = rel(3), colour = 'black'),
+          axis.title.x = element_text(size = rel(3), colour = 'black'),
+          axis.text.x = element_text(size = rel(2), colour = 'black'),
+          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    ylab(expression('Log leaf ' * italic('N')['area'])) +
+    xlab('Mean Annual Growing Season Temperature (°C)'))
 
-cld(emmeans(leafNarea_lmer, ~Nfix))
-cld(emmeans(leafNarea_lmer, ~photosynthetic_pathway))
-test(emtrends(leafNarea_lmer, ~1, var = 'chi'))
-test(emtrends(leafNarea_lmer, ~1, var = 'log(lma)'))
-test(emtrends(leafNarea_lmer, ~1, var = 'tmp'))
-test(emtrends(leafNarea_lmer, ~1, var = 'log(par)'))
+## find slope and intercept from mixed effects model
+emtrends(leafNarea_lmer, ~z, var = "z")
+emmeans(leafNarea_lmer, ~z, at = list(z = 0))
+z_slope <- summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2] # slope = 6.698e-05
+z_intercept <- summary(emmeans(leafNarea_lmer, ~z, at = list(z = 0)))[1, 2] # intercept = 3.328
+z_seq <- seq(min(leaf$z, na.rm = T), max(leaf$z, na.rm = T), 0.01)
+z_trend <- z_intercept + z_seq * z_slope
+z_trend <- as.data.frame(cbind(z_seq, z_trend))
 
-calc.relip.mm(leafNarea_lmer)
+(z_plot <- ggplot(data = leaf_chi_subset, aes(x = z, y = log(narea))) + 
+    geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
+    geom_line(data = z_trend, aes(x = z_seq, y = z_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
+    theme(legend.position = "none", 
+          axis.title.y = element_text(size = rel(3), colour = 'black'),
+          axis.title.x = element_text(size = rel(3), colour = 'black'),
+          axis.text.x = element_text(size = rel(2), colour = 'black'),
+          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    ylab(expression('Log leaf ' * italic('N')['area'])) +
+    xlab('Elevation (m)'))
 
-### make figure
-narea_plot = ggplot(data = leaf_chi_subset, 
+## find slope and intercept from mixed effects model
+emtrends(leafNarea_lmer, ~lma, var = "lma")
+emmeans(leafNarea_lmer, ~lma)
+emmeans(leafNarea_lmer, ~lma, at = list(lma = 0.0))
+lma_slope <- summary(emtrends(leafNarea_lmer, ~lma, var = "lma"))[1, 2] # slope = 0.0007
+lma_intercept <- -7.63 # intercept =
+lma_seq <- seq(min(leaf$lma, na.rm = T), max(leaf$lma, na.rm = T), 0.01)
+lma_trend <- lma_intercept + lma_seq * lma_slope
+lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
+
+(lma_plot <- ggplot(data = leaf_chi_subset, aes(x = log(lma), y = log(narea))) + 
+    geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
+    stat_smooth(method = lm, color = "black") +
+    theme(legend.position = "none", 
+          axis.title.y = element_text(size = rel(3), colour = 'black'),
+          axis.title.x = element_text(size = rel(3), colour = 'black'),
+          axis.text.x = element_text(size = rel(2), colour = 'black'),
+          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    ylab(expression('Log leaf ' * italic('N')['area'])) +
+    xlab('Log LMA'))
+
+(narea_plot <- ggplot(data = leaf_chi_subset, 
                          aes(x = Ntrt_fac, y = log(narea))) +
   theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(4), colour = 'black'),
-        axis.title.x=element_text(size=rel(4), colour = 'black'),
-        axis.text.x=element_text(size=rel(3), colour = 'black'),
-        axis.text.y=element_text(size=rel(3), colour = 'black'),
+        axis.title.y = element_text(size = rel(3), colour = 'black'),
+        axis.title.x = element_text(size = rel(3), colour = 'black'),
+        axis.text.x = element_text(size = rel(2), colour = 'black'),
+        axis.text.y = element_text(size = rel(2), colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey"),
-        plot.tag = element_text(size = 30)) +
-  geom_boxplot(outlier.color = NA, fill = 'white', lwd = 5) +
-  geom_dotplot(binaxis = 'y', binwidth = 0.1, stackdir = 'center', 
-               fill = 'burlywood1', alpha = 0.8) +
-  scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('') +
-  ylab(expression('Log leaf ' * italic('N')['area'])) +
-  xlab('Soil N treatment') +
-  labs(tag = 'A')
+        panel.grid.major = element_line(colour = "white"),
+        plot.tag = element_text(size = 18)) +
+    geom_dotplot(binaxis = 'y', binwidth = 0.08, stackdir = 'center', 
+                 fill = 'burlywood', alpha = 0.8) +
+    geom_boxplot(outlier.color = NA, fill = NA, lwd = 1) +
+    scale_x_discrete(labels = c('Ambient', 'Added N')) +
+    ylab(expression('Log leaf ' * italic('N')['area'])) +
+    xlab('Soil N treatment'))
 
-# jpeg(filename = "plots/narea_plot.jpeg", width = 800, height = 900, units = 'px')
-# plot(narea_plot)
-# dev.off()
+## find relative importance for each factor from model
+relimp_leafn <- calc.relip.mm(leafNarea_lmer)$lmg
+relimp_leafn_df <- NULL
+relimp_leafn_df$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'Chi', 'Temperature', 
+                            'PAR', 'VPD', 'Elevation', 'LMA', 'N fixer', 'C3/C4', 'Soil Interactions')
+relimp_leafn_df$Importance <- as.numeric(as.character(c(relimp_leafn[1:11], sum(relimp_leafn[12:15]))))
+sum(relimp_leafn[c(1:3, 12:15)]) # importance of soil
+relimp_leafn_df <- as.data.frame(relimp_leafn_df)
+unexplained <- 1 - sum(relimp_leafn_df$Importance)
+unexplained_df <- data.frame("Unexplained", unexplained)
+names(unexplained_df) <- c("Factor", "Importance")
+relimp_leafn_df <- rbind(relimp_leafn_df, unexplained_df)
 
-# chi_plot = ggplot(data = leaf_Nonly, 
-#                   aes(x = Ntrt_fac, y = chi)) +
-#   theme(legend.position = "none", 
-#         axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-#         axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-#         axis.text.x=element_text(size=rel(2), colour = 'black'),
-#         axis.text.y=element_text(size=rel(2), colour = 'black'),
-#         panel.background = element_rect(fill = 'white', colour = 'black'),
-#         panel.grid.major = element_line(colour = "grey")) +
-#   geom_boxplot(outlier.color = NA, fill = 'white') +
-#   geom_dotplot(binaxis = 'y', binwidth = 0.005, stackdir = 'center', alpha = 0.5) +
-#   scale_x_discrete(labels = c('Ambient', 'Added N')) +
-#   xlab('Nitrogen treatment') +
-#   ylab(expression('C'[i] * '/C'[a])) +
-#   annotate("text", x = 1.5, y = 0.93, label = "p = 0.05", size = 8)
+(narea_treemap <- ggplot(relimp_leafn_df, 
+                         aes(area = Importance, label = Factor, fill = Importance)) +
+    scale_fill_gradient(low = "burlywood1", high = "burlywood4") +
+    geom_treemap(colour = 'black', start = "topleft") +
+    geom_treemap_text(colour = "black", place = "centre",
+                      grow = TRUE, start = "topleft"))
 
-relimp_leafn = calc.relip.mm(leafNarea_lmer)$lmg
-relimp_leafn_df = NULL
-relimp_leafn_df$Factor = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'LMA', 'N fixer', 'C3/C4', 'Soil interactions')
-relimp_leafn_df$Importance = as.numeric(as.character(c(relimp_leafn[1:9], sum(relimp_leafn[10:13]))))
-sum(relimp_leafn[c(1:3, 10:13)]) # importance of soil
-relimp_leafn_df = as.data.frame(relimp_leafn_df)
-unexplained = 1 - sum(relimp_leafn_df$Importance)
-unexplained_df = data.frame("Unexplained", unexplained)
-names(unexplained_df) = c("Factor", "Importance")
-relimp_leafn_df = rbind(relimp_leafn_df, unexplained_df)
+(narea_plot_treemap <- narea_plot + narea_treemap +
+  plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(size = 24)))
 
-narea_treemap = ggplot(relimp_leafn_df, aes(area = Importance, label = Factor)) +
-  theme(plot.tag = element_text(size = 30)) +
-  geom_treemap(fill = c('burlywood1', 'burlywood2', 'burlywood3', 
-                        'blue', 'yellow', 'red', 'grey', 'orange', 'green', 
-                        'burlywood4', 'white'), colour = 'black') +
-  geom_treemap_text(colour = "black", place = "centre",
-                    grow = TRUE) +
-    labs(tag = 'B')
+### table with model results
+Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 
+                             'ln PAR', 'ln VPD', 'Elevation', 'ln LMA', 'N fixer', 'C3/C4',
+                             'Soil N x Soil P', 'Soil N x Soil P', 'Soil P x Soil K',
+                             'Soil N x Soil P x Soil K')) 
+Narea_model$Slope <- c(NA, NA, NA,
+                      summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~par, var = "par"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~vpd, var = "vpd"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~lma, var = "lma"))[1, 2],
+                      NA, NA, NA, NA, NA, NA)
+Narea_model$SE <- c(NA, NA, NA,
+                       summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~par, var = "par"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~vpd, var = "vpd"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~lma, var = "lma"))[1, 3],
+                       NA, NA, NA, NA, NA, NA)
+Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:15, 3]
+Narea_model$RelImp <- c(relimp_leafn_df[1:12, 2], NA, NA, NA)
+Narea_model$RelImp <- Narea_model$RelImp * 100
 
-# jpeg(filename = "plots/narea_treemap.jpeg", width = 900, height = 900, units = 'px')
-# plot(narea_treemap)
-# dev.off()
+write.csv(Narea_model, 'tables/Narea_model.csv')
 
-jpeg(filename = "plots/narea_plot_treemap.jpeg", width = 1700, height = 900, units = 'px')
-multiplot(narea_plot, narea_treemap, cols = 2)
-dev.off()
 
-#####################################################################
-## Narea predictions
-#####################################################################
-gas_exchange_pred_c3 = calc_optimal_vcmax_knownchi(tg_c = leaf$tmp, 
+#### Narea predictions ####
+### calculate vcmax, jmax, and vpmax with known chi for C3 plants
+gas_exchange_pred_c3 <- calc_optimal_vcmax_knownchi(tg_c = leaf$tmp, 
                                        paro = leaf$par, 
                                        cao = 400, 
                                        vpdo = leaf$vpd, 
@@ -292,7 +304,8 @@ gas_exchange_pred_c3 = calc_optimal_vcmax_knownchi(tg_c = leaf$tmp,
                                        chi = leaf$chi,
                                        q0 = 0.1)
 
-gas_exchange_pred_c4 = C4model_knownchi(tg_c = leaf$tmp, 
+### calculate vcmax, jmax, and vpmax with known chi for C4 plants
+gas_exchange_pred_c4 <- C4model_knownchi(tg_c = leaf$tmp, 
                                                    paro = leaf$par, 
                                                    cao = 400, 
                                                    vpdo = leaf$vpd, 
@@ -300,325 +313,303 @@ gas_exchange_pred_c4 = C4model_knownchi(tg_c = leaf$tmp,
                                                    chi = leaf$chi,
                                         q0 = 0.1)
 
-leaf$vcmax25[leaf$photosynthetic_pathway == 'C3'] = gas_exchange_pred_c3$vcmax[leaf$photosynthetic_pathway == 'C3'] /
+### add predicted vcmax for C3 plants to leaf dataset
+leaf$vcmax25[leaf$photosynthetic_pathway == 'C3'] <- 
+  gas_exchange_pred_c3$vcmax[leaf$photosynthetic_pathway == 'C3'] /
   calc_vcmax_tresp_mult(gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 
                         gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 25)
-leaf$jmax25[leaf$photosynthetic_pathway == 'C3'] = gas_exchange_pred_c3$jmax[leaf$photosynthetic_pathway == 'C3'] /
+
+### add predicted jmax for C3 plants to leaf dataset
+leaf$jmax25[leaf$photosynthetic_pathway == 'C3'] <- 
+  gas_exchange_pred_c3$jmax[leaf$photosynthetic_pathway == 'C3'] /
   calc_jmax_tresp_mult(gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 
                        gas_exchange_pred_c3$tg_c[leaf$photosynthetic_pathway == 'C3'], 25)
-leaf$vpmax25[leaf$photosynthetic_pathway == 'C3'] = 0
-leaf$vcmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$vcmax[leaf$photosynthetic_pathway == 'C4'] /
+
+### set predicted vpmax for C3 plants to zero
+leaf$vpmax25[leaf$photosynthetic_pathway == 'C3'] <- 0
+
+### add predicted vcmax for C4 plants to leaf dataset
+leaf$vcmax25[leaf$photosynthetic_pathway == 'C4'] <- 
+  gas_exchange_pred_c4$vcmax[leaf$photosynthetic_pathway == 'C4'] /
   calc_vcmax_tresp_mult(gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 
                         gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 25)
-leaf$jmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$jmax[leaf$photosynthetic_pathway == 'C4'] /
+
+### add predicted jmax for C4 plants to leaf dataset
+leaf$jmax25[leaf$photosynthetic_pathway == 'C4'] <- 
+  gas_exchange_pred_c4$jmax[leaf$photosynthetic_pathway == 'C4'] /
   calc_jmax_tresp_mult(gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 
                        gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 25)
-leaf$vpmax25[leaf$photosynthetic_pathway == 'C4'] = gas_exchange_pred_c4$vpmax[leaf$photosynthetic_pathway == 'C4'] /
+
+### add predicted vpmax for C4 plants to leaf dataset
+leaf$vpmax25[leaf$photosynthetic_pathway == 'C4'] <- 
+  gas_exchange_pred_c4$vpmax[leaf$photosynthetic_pathway == 'C4'] /
   calc_vcmax_tresp_mult(gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 
                         gas_exchange_pred_c4$tg_c[leaf$photosynthetic_pathway == 'C4'], 25)
 
-leaf$nrubisco = fvcmax25_nrubisco(leaf$vcmax25)
-leaf$nbioe = fjmax25_nbioe(leaf$jmax25)
-leaf$npep = fvpmax25_npep(leaf$vpmax25)
-leaf$nstructure = flma_nstructure(leaf$lma)
-leaf$nall = leaf$nrubisco + leaf$nbioe + leaf$nstructure + leaf$npep
-leaf$nphoto = leaf$nrubisco + leaf$nbioe + leaf$npep
-leaf$nrubisco_frac = leaf$nrubisco / leaf$nall
-leaf$nphoto_frac = leaf$nphoto / leaf$nall
+## calculate leaf N in rubisco from predicted vcmax
+leaf$nrubisco <- fvcmax25_nrubisco(leaf$vcmax25)
+## calculate leaf N in bioenergetics from predicted jmax
+leaf$nbioe <- fjmax25_nbioe(leaf$jmax25)
+## calculate leaf N in rubisco from predicted vpmax with PEP-specific constants
+leaf$npep <- fvpmax25_npep(leaf$vpmax25)
+## calculate nitrogen in structural tissue from lma 
+leaf$nstructure <- flma_nstructure(leaf$lma)
+## sum all leaf N predictions
+leaf$nall <- leaf$nrubisco + leaf$nbioe + leaf$nstructure + leaf$npep
+## calculate leaf N used for photosynthesis
+leaf$nphoto <- leaf$nrubisco + leaf$nbioe + leaf$npep
+## calculate the fraction of leaf N in rubisco out of all leaf N
+leaf$nrubisco_frac <- leaf$nrubisco / leaf$nall
+## calculate the fraction of leaf N for photosynthesis out of all leaf N
+leaf$nphoto_frac <- leaf$nphoto / leaf$nall
 
-# npred_lmer = lmer(log(narea) ~ nphoto + nstructure +
-#                     (1|site_code) + (1|site_code:block_fac),
-#                   data = leaf)
-# Anova(npred_lmer)
-# summary(npred_lmer)
-# calc.relip.mm(npred_lmer)
+leaf$lognphoto <- log(leaf$nphoto)
+leaf$lognstructure <- log(leaf$nstructure)
 
-leaf$lognphoto = log(leaf$nphoto)
-leaf$lognstructure = log(leaf$nstructure)
-npred_soil_lmer = lmer(log(narea) ~ lognphoto + lognstructure + 
+### fit linear mixed effects model
+npred_soil_lmer <- lmer(log(narea) ~ lognphoto + lognstructure + 
                          Ntrt_fac * Ptrt_fac * Ktrt_fac +
                          Nfix + photosynthetic_pathway +
                          (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac),
-                  data = leaf_chi_subset)
-plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
-Anova(npred_soil_lmer)
+                  data = leaf)
+# plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
 summary(npred_soil_lmer)
-calc.relip.mm(npred_soil_lmer)
+Anova(npred_soil_lmer)
 
-nphoto_slope = summary(emtrends(npred_soil_lmer, ~1, var = "lognphoto"))[1, 2]
-nphoto_intercept_lowN = summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognphoto = 0)))[1, 2]
-nphoto_intercept_highN = summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognphoto = 0)))[2, 2]
-lognphoto_seq = seq(min(leaf$lognphoto), max(leaf$lognphoto), 0.01)
-nphoto_trend_lowN = nphoto_intercept_lowN + lognphoto_seq * nphoto_slope
-nphoto_trend_highN = nphoto_intercept_highN + lognphoto_seq * nphoto_slope
-nphoto_trend = as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_trend_highN))
+### make figures
+## find slope and intercept from mixed effects model
+nphoto_slope <- summary(emtrends(npred_soil_lmer, ~lognphoto, var = "lognphoto"))[1, 2]
+nphoto_intercept_lowN <- summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognphoto = 0)))[1, 2]
+nphoto_intercept_highN <- summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognphoto = 0)))[2, 2]
+lognphoto_seq <- seq(min(leaf$lognphoto, na.rm = T), max(leaf$lognphoto, na.rm = T), 0.01)
+nphoto_trend_lowN <- nphoto_intercept_lowN + lognphoto_seq * nphoto_slope
+nphoto_trend_highN <- nphoto_intercept_highN + lognphoto_seq * nphoto_slope
+nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_trend_highN))
 
-npred_photo_plot = ggplot(data = leaf_chi_subset, 
-                    aes(x = lognphoto, y = log(narea), color = Ntrt_fac)) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_point(shape = 16, size = 3, alpha = 0.5) +
-  scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
-  labs(color = 'Soil N') +
-  geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_lowN), 
-            col = 'black', lwd = 3, alpha = 0.8) +
-  geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
-            col = 'burlywood1', lwd = 3, alpha = 0.8) +
-  ylab(expression('Log leaf ' * italic('N')['area'])) +
-  xlab(expression('Log leaf ' * italic('N')['photo']))
+(npred_photo_plot <- ggplot(data = leaf, 
+                            aes(x = lognphoto, y = log(narea), color = Ntrt_fac)) +
+    theme(legend.position = "none", 
+          axis.title.y = element_text(size = rel(3), colour = 'black'),
+          axis.title.x = element_text(size = rel(3), colour = 'black'),
+          axis.text.x = element_text(size = rel(2), colour = 'black'),
+          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    geom_point(shape = 16, size = 3, alpha = 0.8) +
+    scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
+    labs(color = 'Soil N') +
+    geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_lowN), 
+              col = 'black', lwd = 2, alpha = 0.8) +
+    geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
+              col = 'burlywood1', lwd = 3, alpha = 0.8) +
+    ylab(expression('Log leaf ' * italic('N')['area'])) +
+    xlab(expression('Log leaf ' * italic('N')['photo'])))
+  
+## find slope and intercept from mixed effects model
+nstructure_slope <- summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 2]
+nstructure_intercept_lowN <- summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognstructure = 0)))[1, 2]
+nstructure_intercept_highN <- summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognstructure = 0)))[2, 2]
+lognstructure_seq <- seq(min(leaf$lognstructure, na.rm = T), max(leaf$lognstructure, na.rm = T), 0.1)
+nstructure_trend_lowN <- nstructure_intercept_lowN + lognstructure_seq * nstructure_slope
+nstructure_trend_highN <- nstructure_intercept_highN + lognstructure_seq * nstructure_slope
+nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN, nstructure_trend_highN))
 
-nstructure_slope = summary(emtrends(npred_soil_lmer, ~1, var = "lognstructure"))[1, 2]
-nstructure_intercept_lowN = summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognstructure = 0)))[1, 2]
-nstructure_intercept_highN = summary(emmeans(npred_soil_lmer, ~Ntrt_fac, at = list(lognstructure = 0)))[2, 2]
-lognstructure_seq = seq(min(leaf$lognstructure, na.rm = T), max(leaf$lognstructure, na.rm = T), 0.1)
-nstructure_trend_lowN = nstructure_intercept_lowN + lognstructure_seq * nstructure_slope
-nstructure_trend_highN = nstructure_intercept_highN + lognstructure_seq * nstructure_slope
-nstructure_trend = as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN, nstructure_trend_highN))
-
-npred_structure_plot = ggplot(data = leaf_chi_subset, 
+(npred_structure_plot <- ggplot(data = leaf, 
                               aes(x = lognstructure, y = log(narea), color = Ntrt_fac)) +
-  theme(legend.position = c(0, 1),
-        legend.justification = c(0, 1),
-        legend.title = element_text(size = 20),
-        legend.text = element_text(size = 20),
-        legend.background = element_rect(fill = 'white', colour = 'black'),
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_point(shape = 16, size = 3, alpha = 0.5) +
-  scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
-  labs(color = 'Soil N') +
-  geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_lowN), 
-            col = 'black', lwd = 3, alpha = 0.8) +
-  geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
-            col = 'burlywood1', lwd = 3, alpha = 0.8) +
-  ylab(expression('Log leaf ' * italic('N')['area'])) +
-  xlab(expression('Log leaf ' * italic('N')['structure']))
+    theme(legend.position = c(0, 1),
+          legend.justification = c(0, 1),
+          legend.title = element_text(size = 20),
+          legend.text = element_text(size = 20),
+          legend.background = element_rect(fill = 'white', colour = 'black'),
+          axis.title.y=element_text(size=rel(3), colour = 'black'),
+          axis.title.x=element_text(size=rel(3), colour = 'black'),
+          axis.text.x=element_text(size=rel(2), colour = 'black'),
+          axis.text.y=element_text(size=rel(2), colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    geom_point(shape = 16, size = 2, alpha = 0.8) +
+    scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
+    labs(color = 'Soil N') +
+    geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_lowN), 
+              col = 'black', lwd = 3, alpha = 0.8) +
+    geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
+              col = 'burlywood1', lwd = 3, alpha = 0.8) +
+    ylab(expression('Log leaf ' * italic('N')['area'])) +
+    xlab(expression('Log leaf ' * italic('N')['structure'])))
 
-jpeg(filename = "plots/npred_plot.jpeg", width = 800, height = 500, units = 'px')
-multiplot(npred_structure_plot, npred_photo_plot, cols=2)
-dev.off()
+(npred_plot <- npred_structure_plot + npred_photo_plot +
+    plot_annotation(tag_levels = 'A') & 
+    theme(plot.tag = element_text(size = 18)))
 
-relimp_leafn_pred = calc.relip.mm(npred_soil_lmer)$lmg
-relimp_leafn_pred_df = NULL
-relimp_leafn_pred_df$Factor = c('Nphoto', 'Nstructure', 'Soil N', 'Soil P', 'Soil K+µ', 'N fixer', 'C3/C4', 'Soil interactions')
-relimp_leafn_pred_df$Importance = as.numeric(as.character(c(relimp_leafn_pred[1:7], sum(relimp_leafn_pred[8:11]))))
+## find relative importance for each factor from model
+calc.relip.mm(npred_soil_lmer)$lmg
+relimp_leafn_pred <- calc.relip.mm(npred_soil_lmer)$lmg
+relimp_leafn_pred_df <- NULL
+relimp_leafn_pred_df$Factor <- c('Nphoto', 'Nstructure', 'Soil N', 'Soil P', 'Soil K+µ', 
+                                 'N fixer', 'C3/C4', 'Soil Interactions')
+relimp_leafn_pred_df$Importance <- as.numeric(as.character(c(relimp_leafn_pred[1:7], sum(relimp_leafn_pred[8:11]))))
 sum(relimp_leafn_pred[c(3:5, 8:11)]) # importance of soil
-relimp_leafn_pred_df = as.data.frame(relimp_leafn_pred_df)
-unexplained = 1 - sum(relimp_leafn_pred_df$Importance)
-unexplained_pred_df = data.frame("Unexplained", unexplained)
-names(unexplained_pred_df) = c("Factor", "Importance")
-relimp_leafn_pred_df = rbind(relimp_leafn_pred_df, unexplained_pred_df)
+relimp_leafn_pred_df <- as.data.frame(relimp_leafn_pred_df)
+unexplained <- 1 - sum(relimp_leafn_pred_df$Importance)
+unexplained_pred_df <- data.frame("Unexplained", unexplained)
+names(unexplained_pred_df) <- c("Factor", "Importance")
+relimp_leafn_pred_df <- rbind(relimp_leafn_pred_df, unexplained_pred_df)
 
-narea_pred_treemap = ggplot(relimp_leafn_pred_df, aes(area = Importance, label = Factor)) +
-  theme(plot.tag = element_text(size = 30)) +
-  geom_treemap(fill = c('darkgreen', 'grey', 'burlywood1', 'burlywood2', 'burlywood3', 
-                        'orange', 'green', 
-                        'burlywood4', 'white'), colour = 'black') +
-  geom_treemap_text(colour = "black", place = "centre",
-                    grow = TRUE)
+(narea_pred_treemap <- ggplot(relimp_leafn_pred_df, 
+                              aes(area = Importance, label = Factor, fill = Importance)) +
+    theme(plot.tag = element_text(size = 30)) +
+    scale_fill_gradient(low = "burlywood1", high = "burlywood4") +
+    geom_treemap(colour = 'black', start = "topleft") +
+    geom_treemap_text(colour = "black", place = "centre",
+                    grow = TRUE, start = "topleft"))
 
-jpeg(filename = "plots/narea_pred_treemap.jpeg", width = 850, height = 900, units = 'px')
-plot(narea_pred_treemap)
-dev.off()
+### table with model results
+Narea_pred_model <- data.frame(Var = c('ln Nphoto', 'ln Nstructure', 'Soil N', 'Soil P', 
+                                       'Soil K+µ', 'N fixer', 'C3/C4', 'Soil N x Soil P', 
+                                       'Soil N x Soil P', 'Soil P x Soil K', 
+                                       'Soil N x Soil P x Soil K')) 
+Narea_pred_model$Slope <- c(summary(emtrends(npred_soil_lmer, ~lognphoto, var = "lognphoto"))[1, 2],
+                            summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 2],
+                            NA, NA, NA, NA, NA, NA, NA, NA, NA)
+Narea_pred_model$SE <- c(summary(emtrends(npred_soil_lmer, ~lognphoto, var = "lognphoto"))[1, 3],
+                         summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 3],
+                         NA, NA, NA, NA, NA, NA, NA, NA, NA)
+Narea_pred_model$p <- as.matrix(Anova(npred_soil_lmer))[1:11, 3]
+Narea_pred_model$RelImp <- c(relimp_leafn_pred_df[1:8, 2], NA, NA, NA)
+Narea_pred_model$RelImp <- Narea_pred_model$RelImp * 100
 
-#####################################################################
-## soil N effects on LAI
-#####################################################################
-leaf_site = read.csv('../Data/processed/traits_site.csv')
-leaf_site$Ntrt_fac = as.factor(leaf_site$Ntrt)
-leaf_site$Ptrt_fac = as.factor(leaf_site$Ptrt)
-leaf_site$Ktrt_fac = as.factor(leaf_site$Ktrt)
-leaf_site$block_fac = as.factor(leaf_site$block)
-# leaf_site_Nonly = subset(leaf_site, Ptrt_fac == '0' & Ktrt_fac == '0')
+write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
 
-# hist(leaf_site_Nonly$lai_mean)
-# hist(log(leaf_site_Nonly$lai_mean))
-lai_lmer = lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
-                  # tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
+
+#### soil N effects on LAI ####
+### load data
+leaf_site <- read.csv('../Data/processed/traits_site.csv')
+
+## turn treatment numbers into factors
+leaf_site$Ntrt_fac <- as.factor(leaf_site$Ntrt)
+leaf_site$Ptrt_fac <- as.factor(leaf_site$Ptrt)
+leaf_site$Ktrt_fac <- as.factor(leaf_site$Ktrt)
+leaf_site$block_fac <- as.factor(leaf_site$block)
+
+## linear mixed effects model for leaf area index (lai)
+lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                   (1|site_code) + (1|site_code:block), 
                 data = leaf_site)
-# plot(resid(lai_lmer) ~ fitted(lai_lmer))
-Anova(lai_lmer)
+## plot(resid(lai_lmer) ~ fitted(lai_lmer))
 summary(lai_lmer)
-cld(emmeans(lai_lmer, ~Ntrt_fac))
-cld(emmeans(lai_lmer, ~Ntrt_fac*Ptrt_fac))
-(exp(summary(emmeans(lai_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(lai_lmer, ~Ntrt_fac))[1,2])) / 
-  abs(exp(summary(emmeans(lai_lmer, ~Ntrt_fac))[1,2]))
+Anova(lai_lmer)
 
-calc.relip.mm(lai_lmer)
+cld.emmGrid(emmeans(lai_lmer, ~Ntrt_fac * Ptrt_fac))
 
-# hist(leaf_site_Nonly$live_mass_mean)
-# hist(log(leaf_site_Nonly$live_mass_mean))
-live_mass_lmer = lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
-                        # tmp_mean + log(par_mean) +  log(vpd_mean) + z_mean +
+### linear mixed effects model for mean live mass
+live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                         (1|site_code) + (1|site_code:block), 
                       data = leaf_site)
-# # plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
+# plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
+summary(live_mass_lmer)
 Anova(live_mass_lmer)
-cld(emmeans(live_mass_lmer, ~Ntrt_fac))
-(exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2]) - exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])) / 
- abs(exp(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]))
 
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '0'] = '-N, -P'
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '0'] = '+N, -P'
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '1'] = '-N, +P'
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '1'] = '+N, +P'
+cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac))
 
-lai_plot = ggplot(data = leaf_site, 
+### assign treatment group labels
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '0'] <- '-N, -P'
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '0'] <- '+N, -P'
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '1'] <- '-N, +P'
+leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '1'] <- '+N, +P'
+
+### make figures
+lai_letters <- data.frame(NPgroup = c("-N, -P", "-N, +P", "+N, -P", "+N, +P"), 
+                          y = c(2.1, 2.1, 2.1, 2.1), 
+                          letter = c("a", "a", "b", "c"))
+
+(lai_plot <- ggplot(data = leaf_site, 
                   aes(x = NPgroup, y = log(lai_mean))) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
+  theme(legend.position = "none",
+        axis.title.y = element_text(size = rel(3), colour = 'black'),
+        axis.title.x = element_text(size = rel(3), colour = 'black'),
+        axis.text.x = element_text(size = rel(2), colour = 'black'),
+        axis.text.y = element_text(size = rel(2), colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
-  scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
-  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('N x P treatment') +
-  ylab(expression('Log LAI (m' ^ '2' *' m' ^'-2' * ')'))
+        panel.grid.major = element_line(colour = "white")) +
+    geom_boxplot(outlier.color = NA, fill = 'white') +
+    geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
+    scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
+    geom_text(data = lai_letters, aes(y = y, label = letter), size = 6) +
+    xlab('N x P treatment') +
+    ylab(expression('Log LAI (m' ^ '2' *' m' ^'-2' * ')')))
 
-live_mass_plot = ggplot(data = leaf_site, 
+live_mass_letters <- data.frame(NPgroup = c("-N, -P", "-N, +P", "+N, -P", "+N, +P"), 
+                          y = c(7.8, 7.8, 7.8, 7.8), 
+                          letter = c("a", "b", "b", "c"))
+
+(live_mass_plot <- ggplot(data = leaf_site, 
                   aes(x = NPgroup, y = log(live_mass_mean))) +
-  theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_boxplot(outlier.color = NA, fill = 'white') +
-  geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
-  scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
-  # scale_x_discrete(labels = c('Ambient', 'Added N')) +
-  xlab('N x P treatment') +
-  ylab(expression('Log Biomass (g m' ^ '2' * ')'))
+    theme(legend.position = "none", 
+          axis.title.y = element_text(size = rel(3), colour = 'black'),
+          axis.title.x = element_text(size = rel(3), colour = 'black'),
+          axis.text.x = element_text(size = rel(2), colour = 'black'),
+          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "white")) +
+    geom_boxplot(outlier.color = NA, fill = 'white') +
+    geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
+    scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
+    geom_text(data = live_mass_letters, aes(y = y, label = letter), size = 6) +
+    xlab('N x P treatment') +
+    ylab(expression('Log Biomass (g m' ^ '2' * ')')))
 
-jpeg(filename = "plots/plant_plot.jpeg", width = 550, height = 900, units = 'px')
-multiplot(lai_plot, live_mass_plot, cols=1)
-dev.off()
+(plant_plot <- lai_plot / live_mass_plot  +
+    plot_annotation(tag_levels = 'A') & 
+    theme(plot.tag = element_text(size = 24)))
 
-# jpeg(filename = "plots/lai_plot.jpeg", width = 500, height = 550, units = 'px')
-# plot(lai_plot)
-# dev.off()
 
-#####################################################################
-## supply vs demand effects on leaf N
-#####################################################################
+#### supply vs demand effects on leaf N ####
+### calculate treatment type averages
+leaf_site_N <- leaf_chi_subset %>%
+  group_by(site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac, block_fac, fence, trt,
+           plot, Taxon, grass, Nfix, photosynthetic_pathway) %>%
+  summarise_at(vars(narea, spp_lai, chi, spp_live_mass, spp_mass_N, max_cover, lma, p_pet, vpd, tmp),
+               mean, na.rm = TRUE)
 
-### non-delta response
-#### note: not really sure what this is telling us!
-# narea_supdem_lmer = lmer(log(narea) ~ Ntrt_fac * spp_lai +
-#                            (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
-#                          data = leaf)
-# plot(resid(narea_supdem_lmer) ~ fitted(narea_supdem_lmer))
-# Anova(narea_supdem_lmer)
-# test(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'spp_lai'))
-# cld(emtrends(narea_supdem_lmer, ~Ntrt_fac, var = 'spp_lai'))
+### subset by low N treatment
+leaf_site_lowN <- subset(leaf_site_N, Ntrt_fac == '0')
 
-### calculate deltas (per species per treatment type per block per site)
-#### questions: should we include block into the grouping? this yields 2692 observations
-#### removing block (and plot) yields 1267 obs
+### subset by high N treatment
+leaf_site_highN <- subset(leaf_site_N, Ntrt_fac == '1')
 
-leaf_site_N_group_by = group_by(leaf_chi_subset, 
-                                site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac,
-                                block_fac,
-                                fence, trt, plot,
-                                Taxon, grass, Nfix, photosynthetic_pathway)
-leaf_site_N = summarise(leaf_site_N_group_by,
-                        n = n(),
-                        narea_mean = mean(narea, na.rm = T),
-                        spp_lai_mean = mean(spp_lai, na.rm = T),
-                        chi_mean = mean(chi, na.rm = T),
-                        spp_live_mass_mean = mean(spp_live_mass, na.rm = T),
-                        spp_N_mass_mean = mean(spp_mass_N, na.rm = T),
-                        max_cover_mean = mean(max_cover, na.rm = T),
-                        lma_mean = mean(lma, na.rm = T),
-                        p_pet_mean = mean(p_pet, na.rm = T),
-                        vpd_mean = mean(vpd, na.rm = T),
-                        tmp_mean = mean(tmp, na.rm = T))
-# leaf_site_N$PKtrt_fac = as.factor(paste(leaf_site_N$Ptrt_fac, leaf_site_N$Ktrt_fac, sep = ''))
-leaf_site_lowN = subset(leaf_site_N, Ntrt_fac == '0')
-leaf_site_highN = subset(leaf_site_N, Ntrt_fac == '1')
-nrow(leaf_site_lowN)
-nrow(leaf_site_highN)
-leaf_site_trt = left_join(leaf_site_lowN, leaf_site_highN, 
+### combine low N and high N subsets
+leaf_site_trt <- left_join(leaf_site_lowN, leaf_site_highN, 
                                 by = c('site_code', 
                                        'block_fac', 
                                        'Ptrt_fac', 'Ktrt_fac',
                                        'fence',
                                        'Taxon', 'grass', 'Nfix', 'photosynthetic_pathway'))
-nrow(leaf_site_trt)
 
-leaf_site_trt$delta_narea = ((leaf_site_trt$narea_mean.y - 
-                                leaf_site_trt$narea_mean.x) / leaf_site_trt$narea_mean.x) * 100
-leaf_site_trt$delta_lai = ((leaf_site_trt$spp_lai_mean.y - 
-                              leaf_site_trt$spp_lai_mean.x) / leaf_site_trt$spp_lai_mean.x) * 100
-leaf_site_trt$delta_live_mass = ((leaf_site_trt$spp_live_mass_mean.y - 
-                                    leaf_site_trt$spp_live_mass_mean.x) / leaf_site_trt$spp_live_mass_mean.x) * 100
-leaf_site_trt$delta_N_mass = ((leaf_site_trt$spp_N_mass_mean.y - 
-                                    leaf_site_trt$spp_N_mass_mean.x) / leaf_site_trt$spp_N_mass_mean.x) * 100
-leaf_site_trt$delta_chi = ((leaf_site_trt$chi_mean.y - 
-                              leaf_site_trt$chi_mean.x) / leaf_site_trt$chi_mean.x) * 100
-leaf_site_trt$delta_lma = ((leaf_site_trt$lma_mean.y - 
-                              leaf_site_trt$lma_mean.x) / leaf_site_trt$lma_mean.x) * 100
+### calculate percent change from the high N plots to the low N plots
+leaf_site_trt$delta_narea <- ((leaf_site_trt$narea.y - 
+                                leaf_site_trt$narea.x) / leaf_site_trt$narea.x) * 100
+leaf_site_trt$delta_lai <- ((leaf_site_trt$spp_lai.y - 
+                              leaf_site_trt$spp_lai.x) / leaf_site_trt$spp_lai.x) * 100
+leaf_site_trt$delta_live_mass <- ((leaf_site_trt$spp_live_mass.y - 
+                                    leaf_site_trt$spp_live_mass.x) / leaf_site_trt$spp_live_mass.x) * 100
+leaf_site_trt$delta_N_mass <- ((leaf_site_trt$spp_mass_N.y - 
+                                    leaf_site_trt$spp_mass_N.x) / leaf_site_trt$spp_mass_N.x) * 100
+leaf_site_trt$delta_chi <- ((leaf_site_trt$chi.y - 
+                              leaf_site_trt$chi.x) / leaf_site_trt$chi.x) * 100
+leaf_site_trt$delta_lma <- ((leaf_site_trt$lma.y - 
+                              leaf_site_trt$lma.x) / leaf_site_trt$lma.x) * 100
 
-## check variables
-### lots of outliers!
-### remove using mean absolute deviation (Leys et al., 2013); nix anything over 2.5x times the MAD
-### mad calculations
-delta_narea_mad = mad(leaf_site_trt$delta_narea, na.rm = T)
-delta_lai_mad = mad(leaf_site_trt$delta_lai, na.rm = T)
-delta_lma_mad = mad(leaf_site_trt$delta_lma, na.rm = T)
-delta_live_mass_mad = mad(leaf_site_trt$delta_live_mass, na.rm = T)
-delta_N_mass_mad = mad(leaf_site_trt$delta_N_mass, na.rm = T)
-delta_chi_mad = mad(leaf_site_trt$delta_chi, na.rm = T)
+### find mean absolute deviation (Leys et al., 2013)
+delta_narea_mad <- mad(leaf_site_trt$delta_narea, na.rm = T)
+delta_lai_mad <- mad(leaf_site_trt$delta_lai, na.rm = T)
+delta_lma_mad <- mad(leaf_site_trt$delta_lma, na.rm = T)
+delta_live_mass_mad <- mad(leaf_site_trt$delta_live_mass, na.rm = T)
+delta_N_mass_mad <- mad(leaf_site_trt$delta_N_mass, na.rm = T)
+delta_chi_mad <- mad(leaf_site_trt$delta_chi, na.rm = T)
 
-
-hist(leaf_site_trt$delta_narea)
-sort(leaf_site_trt$delta_narea) # 4 measurements > 1000% change, 2 > 3000%
-hist(subset(leaf_site_trt, delta_narea < 3 * delta_narea_mad & delta_narea > 3 * -delta_narea_mad)$delta_narea)
-
-hist(leaf_site_trt$delta_lai)
-sort(leaf_site_trt$delta_lai) # 13 measurements > 1000%, 4 measurements > 4000%
-hist(subset(leaf_site_trt, delta_lai < 3 * delta_lai_mad & delta_lai > 3 * -delta_lai_mad)$delta_lai)
-
-hist(leaf_site_trt$delta_live_mass)
-sort(leaf_site_trt$delta_live_mass)
-hist(subset(leaf_site_trt, delta_live_mass < 3 * delta_live_mass_mad & 
-              delta_live_mass > 3 * -delta_live_mass_mad)$delta_live_mass)
-hist(log(subset(leaf_site_trt, delta_live_mass < 3 * delta_live_mass_mad & 
-              delta_live_mass > 3 * -delta_live_mass_mad)$delta_live_mass + 100))
-
-hist(leaf_site_trt$delta_N_mass)
-sort(leaf_site_trt$delta_N_mass)
-hist(subset(leaf_site_trt, delta_N_mass < 3 * delta_N_mass_mad & 
-              delta_N_mass > 3 * -delta_N_mass_mad)$delta_N_mass)
-
-hist(leaf_site_trt$delta_lma)
-sort(leaf_site_trt$delta_lma)
-hist(subset(leaf_site_trt, delta_lma < 3 * delta_lma_mad &
-              delta_lma > 3 * -delta_lma_mad)$delta_lma)
-
-hist(leaf_site_trt$delta_chi)
-sort(leaf_site_trt$delta_chi)
-hist(subset(leaf_site_trt, delta_chi < 3 * delta_chi_mad & delta_chi > 3 * -delta_chi_mad)$delta_chi)
-
-
-### model response
-delta_lai_data = subset(leaf_site_trt, 
-                        delta_narea < 3 * delta_narea_mad & 
+## remove instances where any ∆ values are 3 times higher than the MAD
+delta_lai_data <- subset(leaf_site_trt, 
+                         delta_narea < 3 * delta_narea_mad & 
                           delta_narea > 3 * -delta_narea_mad & 
                           delta_lma < 3 * delta_lma_mad &
                           delta_lma > 3 * -delta_lma_mad &
@@ -626,154 +617,113 @@ delta_lai_data = subset(leaf_site_trt,
                           delta_lai > 3 * -delta_lai_mad &
                           delta_chi < 3 * delta_chi_mad & 
                           delta_chi > 3 * -delta_chi_mad)
-sort(delta_lai_data$delta_narea)
 
-delta_lai_lm = lmer(delta_narea ~ delta_lai + 
+delta_live_mass_data <- subset(leaf_site_trt, 
+                               delta_narea < 3 * delta_narea_mad & 
+                                 delta_narea > 3 * -delta_narea_mad &
+                                 delta_lma < 3 * delta_lma_mad &
+                                 delta_lma > 3 * -delta_lma_mad &
+                                 delta_live_mass < 3 * delta_live_mass_mad & 
+                                 delta_live_mass > 3 * -delta_live_mass_mad &
+                                 delta_chi < 3 * delta_chi_mad &
+                                 delta_chi > 3 * -delta_chi_mad)
+
+delta_N_mass_data <- subset(leaf_site_trt, 
+                            delta_narea < 3 * delta_narea_mad & 
+                              delta_narea > 3 * -delta_narea_mad &
+                              delta_lma < 3 * delta_lma_mad &
+                              delta_lma > 3 * -delta_lma_mad &
+                              delta_N_mass < 3 * delta_N_mass_mad & 
+                              delta_N_mass > 3 * -delta_N_mass_mad &
+                              delta_chi < 3 * delta_chi_mad &
+                              delta_chi > 3 * -delta_chi_mad)
+
+### linear mixed effects model for detla Narea by delta lai
+delta_lai_lm <- lmer(delta_narea ~ delta_lai + 
                       Ptrt_fac * Ktrt_fac +
                       photosynthetic_pathway + Nfix +
                       delta_lai * delta_lma * delta_chi +
                       (1|Taxon) + (1|Taxon:site_code) +
                       (1|Taxon:site_code:block_fac), 
                   data = delta_lai_data)
-plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
-Anova(delta_lai_lm)
+# plot(resid(delta_lai_lm) ~ fitted(delta_lai_lm))
 summary(delta_lai_lm)
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lma'))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai'))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25, delta_chi = -15)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0, delta_chi = -15)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25, delta_chi = -15)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25, delta_chi = 0)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0, delta_chi = 0)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25, delta_chi = 0)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = -25, delta_chi = 15)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 0, delta_chi = 15)))
-test(emtrends(delta_lai_lm, ~1, var = 'delta_lai', at = list(delta_lma = 25, delta_chi = 15))) ## only one!
+Anova(delta_lai_lm)
 
-delta_live_mass_data = subset(leaf_site_trt, 
-                              delta_narea < 3 * delta_narea_mad & 
-                                delta_narea > 3 * -delta_narea_mad &
-                                delta_lma < 3 * delta_lma_mad &
-                                delta_lma > 3 * -delta_lma_mad &
-                                delta_live_mass < 3 * delta_live_mass_mad & 
-                                delta_live_mass > 3 * -delta_live_mass_mad &
-                                delta_chi < 3 * delta_chi_mad &
-                                delta_chi > 3 * -delta_chi_mad)
-
-delta_live_mass_lm = lmer(delta_narea ~ delta_live_mass + 
+### linear mixed effects model for delta Narea by delta live mass
+delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass + 
                             Ptrt_fac * Ktrt_fac +
                             photosynthetic_pathway + Nfix +
                             delta_live_mass * delta_lma * delta_chi +
                             (1|Taxon) + (1|Taxon:site_code) +
                             (1|Taxon:site_code:block_fac), 
                         data = delta_live_mass_data)
-plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
+# plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
 Anova(delta_live_mass_lm)
 summary(delta_live_mass_lm)
-test(emtrends(delta_live_mass_lm, ~1, var = 'delta_lma'))
-test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass'))
-test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25)))
-test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0))) # marginal
-test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25))) # ding!
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25, delta_chi = -15)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0, delta_chi = -15)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25, delta_chi = -15)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25, delta_chi = 0)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0, delta_chi = 0)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25, delta_chi = 0))) # ding!
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = -25, delta_chi = 15)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 0, delta_chi = 15)))
-# test(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', at = list(delta_lma = 25, delta_chi = 15)))
 
-delta_N_mass_data = subset(leaf_site_trt, 
-                              delta_narea < 3 * delta_narea_mad & 
-                                delta_narea > 3 * -delta_narea_mad &
-                                delta_lma < 3 * delta_lma_mad &
-                                delta_lma > 3 * -delta_lma_mad &
-                                delta_N_mass < 3 * delta_N_mass_mad & 
-                                delta_N_mass > 3 * -delta_N_mass_mad &
-                                delta_chi < 3 * delta_chi_mad &
-                                delta_chi > 3 * -delta_chi_mad)
-
-delta_N_mass_lm = lmer(delta_narea ~ delta_N_mass + 
+### linear mixed effects model for delta Narea by delta N mass
+delta_N_mass_lm <- lmer(delta_narea ~ delta_N_mass + 
                          Ptrt_fac * Ktrt_fac +
                          Nfix + # photosynthetic_pathway + Nfix + # no C4
                          delta_N_mass * delta_lma * delta_chi +
                          (1|Taxon) + (1|Taxon:site_code) +
                          (1|Taxon:site_code:block_fac), 
                           data = delta_N_mass_data)
-plot(resid(delta_N_mass_lm) ~ fitted(delta_N_mass_lm))
-Anova(delta_N_mass_lm)
+# plot(resid(delta_N_mass_lm) ~ fitted(delta_N_mass_lm))
 summary(delta_N_mass_lm)
-test(emtrends(delta_N_mass_lm, ~1, var = 'delta_lma'))
-test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass'))
-test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_chi = -25)))
-test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_chi = 0)))
-test(emtrends(delta_N_mass_lm, ~1, var = 'delta_N_mass', at = list(delta_chi = 25)))
+Anova(delta_N_mass_lm)
 
-## make delta_plot
-### dataset
-delta_live_mass_plot_data =  delta_live_mass_data
+### make figures
+## dataset
+delta_live_mass_plot_data <- delta_live_mass_data
 
-### trendline information
-# delta_live_mass_plot_intercept = summary(emmeans(delta_live_mass_lm, ~1, at = list(delta_live_mass = 0)))[1, 2]
-# delta_live_mass_plot_intercept_Nfix_no = summary(emmeans(delta_live_mass_lm, ~Nfix, at = list(delta_live_mass = 0)))[1, 2]
-# delta_live_mass_plot_intercept_Nfix_yes = summary(emmeans(delta_live_mass_lm, ~Nfix, at = list(delta_live_mass = 0)))[2, 2]
-# delta_live_mass_plot_slope = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass'))[1, 2]
-# delta_live_mass_plot_trend = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-#   delta_live_mass_plot_intercept
-# delta_live_mass_plot_trend_Nfix_no = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-#   delta_live_mass_plot_intercept_Nfix_no
-# delta_live_mass_plot_trend_Nfix_yes = delta_live_mass_plot_slope * seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-#   delta_live_mass_plot_intercept_Nfix_yes
-# 
-# delta_live_mass_plot_trend_df = data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1),
-#                                     delta_live_mass_plot_trend, delta_live_mass_plot_trend_Nfix_no, delta_live_mass_plot_trend_Nfix_yes)
-# colnames(delta_live_mass_plot_trend_df) = c('delta_live_mass', 'delta_narea', 'delta_narea_Nfix_no', 'delta_narea_Nfix_yes')
-
-delta_live_mass_plot_intercept_lowlma = summary(emmeans(delta_live_mass_lm, ~1, 
+## trendline information
+delta_live_mass_plot_intercept_lowlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
                                               at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2]
-delta_live_mass_plot_slope_lowlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', 
+delta_live_mass_plot_slope_lowlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
                                            at = list(delta_lma = -25)))[1, 2]
-delta_live_mass_plot_intercept_midlma = summary(emmeans(delta_live_mass_lm, ~1, 
+delta_live_mass_plot_intercept_midlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
                                               at = list(delta_live_mass = 0, delta_lma = 0)))[1, 2]
-delta_live_mass_plot_slope_midlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', 
+delta_live_mass_plot_slope_midlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
                                            at = list(delta_lma = 0)))[1, 2]
-delta_live_mass_plot_intercept_highlma = summary(emmeans(delta_live_mass_lm, ~1, 
+delta_live_mass_plot_intercept_highlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
                                               at = list(delta_live_mass = 0, delta_lma = 25)))[1, 2]
-delta_live_mass_plot_slope_highlma = summary(emtrends(delta_live_mass_lm, ~1, var = 'delta_live_mass', 
+delta_live_mass_plot_slope_highlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
                                            at = list(delta_lma = 25)))[1, 2]
-delta_live_mass_plot_trend_lowlma = delta_live_mass_plot_slope_lowlma * 
+
+delta_live_mass_plot_trend_lowlma <- delta_live_mass_plot_slope_lowlma * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
   delta_live_mass_plot_intercept_lowlma
-delta_live_mass_plot_trend_midlma = delta_live_mass_plot_slope_midlma * 
+
+delta_live_mass_plot_trend_midlma <- delta_live_mass_plot_slope_midlma * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
   delta_live_mass_plot_intercept_midlma
-delta_live_mass_plot_trend_highlma = delta_live_mass_plot_slope_highlma * 
+
+delta_live_mass_plot_trend_highlma <- delta_live_mass_plot_slope_highlma * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
   delta_live_mass_plot_intercept_highlma
 
-delta_live_mass_plot_trend_df = data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), 
+delta_live_mass_plot_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), 
                                                max(delta_live_mass_plot_data$delta_live_mass), 1),
                                     delta_live_mass_plot_trend_lowlma, 
                                     delta_live_mass_plot_trend_midlma, 
                                     delta_live_mass_plot_trend_highlma)
-colnames(delta_live_mass_plot_trend_df) = c('delta_live_mass', 
+colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass', 
                                             'delta_narea_lowlma', 
                                             'delta_narea_midlma', 
                                             'delta_narea_highlma')
 
-
-delta_live_mass_plot = ggplot(data = delta_live_mass_plot_data, 
+(delta_live_mass_plot <- ggplot(data = delta_live_mass_plot_data, 
        aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
   theme(legend.position = "none", 
-        axis.title.y=element_text(size=rel(2.5), colour = 'black'),
-        axis.title.x=element_text(size=rel(2.5), colour = 'black'),
-        axis.text.x=element_text(size=rel(2), colour = 'black'),
-        axis.text.y=element_text(size=rel(2), colour = 'black'),
+        axis.title.y = element_text(size = rel(2.5), colour = 'black'),
+        axis.title.x = element_text(size = rel(2.5), colour = 'black'),
+        axis.text.x = element_text(size = rel(2), colour = 'black'),
+        axis.text.y = element_text(size = rel(2), colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "grey")) +
-  geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.7) +
+  geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
   scale_size_continuous(range = c(1, 3)) +
   scale_fill_gradient(low = 'blue', high = 'red') +
   geom_line(data = delta_live_mass_plot_trend_df, 
@@ -785,14 +735,32 @@ delta_live_mass_plot = ggplot(data = delta_live_mass_plot_data,
   geom_line(data = delta_live_mass_plot_trend_df, 
             aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
             size = 3, colour = 'red', alpha = 1, lty = 1) +
-  # geom_line(data = delta_live_mass_plot_trend_df, aes(x = delta_live_mass, y = delta_narea_Nfix_yes), 
-  #           size = 4, colour = 'green', alpha = 0.7) +
-  # ylim(c(-50, 50)) +
   ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
-  xlab(expression('∆' *'AG Biomass' * ' (%)'))
+  xlab(expression('∆' *'AG Biomass' * ' (%)')))
 
-jpeg(filename = "plots/delta_live_mass_plot.jpeg", width = 400, height = 450, units = 'px')
-plot(delta_live_mass_plot)
-dev.off()
 
+#### save plots ####
+
+ggsave("plots/hypothesis_plot.jpeg", plot = hypothesis_plot,
+       width = 20, height = 25, units = "cm")
+
+ggsave("plots/tmp_plot.jpeg", plot = tmp_plot, 
+       width = 29, height = 18, units = "cm")
+ggsave("plots/z_plot.jpeg", plot = z_plot, 
+       width = 29, height = 18, units = "cm")
+ggsave("plots/lma_plot.jpeg", plot = lma_plot, 
+       width = 29, height = 18, units = "cm")
+ggsave("plots/narea_plot_treemap.jpeg", plot = narea_plot_treemap, 
+       width = 38, height = 18, units = "cm")
+
+ggsave("plots/npred_plot.jpeg", plot = npred_plot, 
+       width = 29, height = 18, units = "cm")
+ggsave("plots/narea_pred_treemap.jpeg", plot = narea_pred_treemap, 
+       width = 29, height = 18, units = "cm")
+
+ggsave("plots/plant_plot.jpeg", plot = plant_plot, 
+       width = 20, height = 25, units = "cm")
+
+ggsave("plots/delta_live_mass_plot.jpeg", plot = delta_live_mass_plot, 
+       width = 29, height = 18, units = "cm")
 
