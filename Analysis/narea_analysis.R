@@ -146,9 +146,12 @@ leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 leaf_chi_subset = subset(leaf, chi > 0.2 & chi < 0.95) # lose 700 points
 
 ### linear mixed effects model
+leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
+leaf_chi_subset$logvpd <- log(leaf_chi_subset$vpd)
+leaf_chi_subset$loglma <- log(leaf_chi_subset$lma)
 leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + 
-                        tmp + log(par) +  log(vpd) + z +
-                        log(lma) + Nfix + photosynthetic_pathway +
+                        tmp + logpar +  logvpd + z +
+                        loglma + Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
@@ -160,7 +163,7 @@ Anova(leafNarea_lmer)
 emtrends(leafNarea_lmer, ~tmp, var = "tmp")
 emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0))
 tmp_slope <- summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2] # slope = -0.0276
-tmp_intercept <- summary(emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0)))[1, 2] # intercept = 3.716
+tmp_intercept <- summary(emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0)))[1, 2] # intercept = 1.75
 tmp_seq <- seq(min(leaf$tmp, na.rm = T), max(leaf$tmp, na.rm = T), 0.01)
 tmp_trend <- tmp_intercept + tmp_seq * tmp_slope
 tmp_trend <- as.data.frame(cbind(tmp_seq, tmp_trend))
@@ -183,7 +186,7 @@ tmp_trend <- as.data.frame(cbind(tmp_seq, tmp_trend))
 emtrends(leafNarea_lmer, ~z, var = "z")
 emmeans(leafNarea_lmer, ~z, at = list(z = 0))
 z_slope <- summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2] # slope = 6.698e-05
-z_intercept <- summary(emmeans(leafNarea_lmer, ~z, at = list(z = 0)))[1, 2] # intercept = 3.328
+z_intercept <- summary(emmeans(leafNarea_lmer, ~z, at = list(z = 0)))[1, 2] # intercept = 1.37
 z_seq <- seq(min(leaf$z, na.rm = T), max(leaf$z, na.rm = T), 0.01)
 z_trend <- z_intercept + z_seq * z_slope
 z_trend <- as.data.frame(cbind(z_seq, z_trend))
@@ -203,18 +206,18 @@ z_trend <- as.data.frame(cbind(z_seq, z_trend))
     xlab('Elevation (m)'))
 
 ## find slope and intercept from mixed effects model
-emtrends(leafNarea_lmer, ~lma, var = "lma")
-emmeans(leafNarea_lmer, ~lma)
-emmeans(leafNarea_lmer, ~lma, at = list(lma = 0.0))
-lma_slope <- summary(emtrends(leafNarea_lmer, ~lma, var = "lma"))[1, 2] # slope = 0.0007
-lma_intercept <- -7.63 # intercept =
-lma_seq <- seq(min(leaf$lma, na.rm = T), max(leaf$lma, na.rm = T), 0.01)
+emtrends(leafNarea_lmer, ~loglma, var = "loglma")
+emmeans(leafNarea_lmer, ~loglma, at = list(loglma = 0))
+lma_slope <- summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 2] # slope = 0.936
+lma_intercept <- summary(emmeans(leafNarea_lmer, ~loglma, at = list(loglma = 0)))[1, 2] # intercept = -3.32
+lma_seq <- seq(min(leaf_chi_subset$loglma, na.rm = T), max(leaf_chi_subset$loglma, na.rm = T), 0.01)
 lma_trend <- lma_intercept + lma_seq * lma_slope
 lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
 
 (lma_plot <- ggplot(data = leaf_chi_subset, aes(x = log(lma), y = log(narea))) + 
     geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
-    stat_smooth(method = lm, color = "black") +
+    geom_line(data = lma_trend, aes(x = lma_seq, y = lma_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
     theme(legend.position = "none", 
           axis.title.y = element_text(size = rel(3), colour = 'black'),
           axis.title.x = element_text(size = rel(3), colour = 'black'),
@@ -270,25 +273,25 @@ relimp_leafn_df <- rbind(relimp_leafn_df, unexplained_df)
 Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 
                              'ln PAR', 'ln VPD', 'Elevation', 'ln LMA', 'N fixer', 'C3/C4',
                              'Soil N x Soil P', 'Soil N x Soil P', 'Soil P x Soil K',
-                             'Soil N x Soil P x Soil K')) 
+                             'Soil N x Soil P x Soil K'))
 Narea_model$Slope <- c(NA, NA, NA,
                       summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2],
-                      summary(emtrends(leafNarea_lmer, ~par, var = "par"))[1, 2],
-                      summary(emtrends(leafNarea_lmer, ~vpd, var = "vpd"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~logvpd, var = "logvpd"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2],
-                      summary(emtrends(leafNarea_lmer, ~lma, var = "lma"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 2],
                       NA, NA, NA, NA, NA, NA)
 Narea_model$SE <- c(NA, NA, NA,
                        summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 3],
-                       summary(emtrends(leafNarea_lmer, ~par, var = "par"))[1, 3],
-                       summary(emtrends(leafNarea_lmer, ~vpd, var = "vpd"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~logvpd, var = "logvpd"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 3],
-                       summary(emtrends(leafNarea_lmer, ~lma, var = "lma"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 3],
                        NA, NA, NA, NA, NA, NA)
 Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:15, 3]
-Narea_model$RelImp <- c(relimp_leafn_df[1:12, 2], NA, NA, NA)
+Narea_model$RelImp <- c(relimp_leafn[1:15])
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
 write.csv(Narea_model, 'tables/Narea_model.csv')
@@ -475,7 +478,7 @@ Narea_pred_model$SE <- c(summary(emtrends(npred_soil_lmer, ~lognphoto, var = "lo
                          summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 3],
                          NA, NA, NA, NA, NA, NA, NA, NA, NA)
 Narea_pred_model$p <- as.matrix(Anova(npred_soil_lmer))[1:11, 3]
-Narea_pred_model$RelImp <- c(relimp_leafn_pred_df[1:8, 2], NA, NA, NA)
+Narea_pred_model$RelImp <- c(relimp_leafn_pred[1:11])
 Narea_pred_model$RelImp <- Narea_pred_model$RelImp * 100
 
 write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
