@@ -117,7 +117,7 @@ hypothesis_data$Narea <- as.numeric(as.character(hypothesis_data$Narea))
   scale_colour_manual(values = c('black', 'grey'), 
                       labels = c('∆N demand = ∆N supply', '∆N demand = 0')) +
   guides(color = guide_legend(title = NULL)) +
-  ylab(expression('Leaf ' * italic('N')['area'])) +
+  ylab(expression(italic('N')['area'])) +
   xlab('N supply'))
 
 
@@ -173,13 +173,13 @@ tmp_trend <- as.data.frame(cbind(tmp_seq, tmp_trend))
     geom_line(data = tmp_trend, aes(x = tmp_seq, y = tmp_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme(legend.position = "none", 
-          axis.title.y = element_text(size = rel(3), colour = 'black'),
-          axis.title.x = element_text(size = rel(3), colour = 'black'),
-          axis.text.x = element_text(size = rel(2), colour = 'black'),
-          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
-    ylab(expression('ln Leaf ' * italic('N')['area'])) +
+    ylab(expression('ln ' * italic('N')['area'])) +
     xlab('Mean Annual Growing Season Temperature (°C)'))
 
 ## find slope and intercept from mixed effects model
@@ -196,13 +196,13 @@ z_trend <- as.data.frame(cbind(z_seq, z_trend))
     geom_line(data = z_trend, aes(x = z_seq, y = z_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme(legend.position = "none", 
-          axis.title.y = element_text(size = rel(3), colour = 'black'),
-          axis.title.x = element_text(size = rel(3), colour = 'black'),
-          axis.text.x = element_text(size = rel(2), colour = 'black'),
-          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
-    ylab(expression('ln Leaf ' * italic('N')['area'])) +
+    ylab(expression('ln ' * italic('N')['area'])) +
     xlab('Elevation (m)'))
 
 ## find slope and intercept from mixed effects model
@@ -219,50 +219,66 @@ lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
     geom_line(data = lma_trend, aes(x = lma_seq, y = lma_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
     theme(legend.position = "none", 
-          axis.title.y = element_text(size = rel(3), colour = 'black'),
-          axis.title.x = element_text(size = rel(3), colour = 'black'),
-          axis.text.x = element_text(size = rel(2), colour = 'black'),
-          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
-    ylab(expression('ln Leaf ' * italic('N')['area'])) +
-    xlab('ln LMA'))
-
+    ylab(expression('ln ' * italic('N')['area'])) +
+    xlab(expression('ln ' * italic('M')['area'])))
+    
 (narea_plot <- ggplot(data = leaf_chi_subset, 
                          aes(x = Ntrt_fac, y = log(narea))) +
   theme(legend.position = "none", 
-        axis.title.y = element_text(size = rel(3), colour = 'black'),
-        axis.title.x = element_text(size = rel(3), colour = 'black'),
-        axis.text.x = element_text(size = rel(2), colour = 'black'),
-        axis.text.y = element_text(size = rel(2), colour = 'black'),
+        axis.title.y = element_text(size = 30, colour = 'black'),
+        axis.title.x = element_text(size = 30, colour = 'black'),
+        axis.text.x = element_text(size = 20, colour = 'black'),
+        axis.text.y = element_text(size = 20, colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "white"),
-        plot.tag = element_text(size = 18)) +
+        panel.grid.major = element_line(colour = "white")) +
     geom_dotplot(binaxis = 'y', binwidth = 0.08, stackdir = 'center', 
                  fill = 'burlywood', alpha = 0.8) +
     geom_boxplot(outlier.color = NA, fill = NA, lwd = 1) +
     scale_x_discrete(labels = c('Ambient', 'Added N')) +
-    ylab(expression('ln Leaf ' * italic('N')['area'])) +
+    ylab(expression('ln ' * italic('N')['area'])) +
     xlab('Soil N treatment'))
 
 ## find relative importance for each factor from model
-relimp_leafn <- calc.relip.mm(leafNarea_lmer)$lmg
-relimp_leafn_df <- NULL
-relimp_leafn_df$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 
-                            'PAR', 'VPD', 'Elevation', 'LMA', 'N fixer', 'C3/C4', 'Soil Interactions')
-relimp_leafn_df$Importance <- as.numeric(as.character(c(relimp_leafn[1:11], sum(relimp_leafn[12:15]))))
-sum(relimp_leafn[c(1:3, 12:15)]) # importance of soil
-relimp_leafn_df <- as.data.frame(relimp_leafn_df)
-unexplained <- 1 - sum(relimp_leafn_df$Importance)
-unexplained_df <- data.frame("Unexplained", unexplained)
-names(unexplained_df) <- c("Factor", "Importance")
-relimp_leafn_df <- rbind(relimp_leafn_df, unexplained_df)
+relimp_leafn <- NULL
+relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'VPD', 'Elevation', 
+                         'Leaf Mass Area', 'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
+relimp_leafn$Importance <- as.numeric(as.character(c(calc.relip.mm(leafNarea_lmer)$lmg[1:11], 
+                                                        sum(calc.relip.mm(leafNarea_lmer)$lmg[12:15]),
+                                                        1 - sum(calc.relip.mm(leafNarea_lmer)$lmg))))
+relimp_leafn_df <- as.data.frame(relimp_leafn)
 
-(narea_treemap <- ggplot(relimp_leafn_df, 
-                         aes(area = Importance, label = Factor, fill = Importance)) +
+tm <- treemapify(data = relimp_leafn_df,
+                 area = "Importance", start = "topleft")
+tm$x <- (tm$xmax + tm$xmin) / 2
+tm$y <- (tm$ymax + tm$ymin) / 2
+
+narea_tm <- full_join(relimp_leafn_df, tm, by = "Factor")
+
+# ggplot(narea_tm, aes(xmin = xmin, ymin = ymax, xmax = xmin, ymax = ymax)) + 
+#   # add fill and borders for groups and subgroups
+#   geom_rect(aes(fill = "white", size = Importance),
+#             show.legend = FALSE, color = "black", alpha = .3) +
+#   scale_size_area(max_size = 5) +
+#   scale_fill_identity() +
+#   ggfittext::geom_fit_text(aes(label = Factor), min.size = 1) +
+#   scale_x_continuous(expand = c(0, 0)) +
+#   scale_y_continuous(expand = c(0, 0)) +
+#   theme_void()
+
+(narea_treemap <- ggplot(narea_tm, 
+                         aes(area = Importance, 
+                             label = Factor, fill = Importance)) +
+    theme(legend.title = element_text(size = 20),
+          legend.text = element_text(size = 15)) +
     scale_fill_gradient(low = "burlywood1", high = "burlywood4") +
     geom_treemap(colour = 'black', start = "topleft") +
-    geom_treemap_text(colour = "black", place = "centre",
+    geom_treemap_text(min.size = 1, colour = "black", place = "centre",
                       grow = TRUE, start = "topleft"))
 
 (narea_plot_treemap <- narea_plot + narea_treemap +
@@ -391,10 +407,10 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
 (npred_photo_plot <- ggplot(data = leaf_chi_subset, 
                             aes(x = lognphoto, y = log(narea), color = Ntrt_fac)) +
     theme(legend.position = "none", 
-          axis.title.y = element_text(size = rel(3), colour = 'black'),
-          axis.title.x = element_text(size = rel(3), colour = 'black'),
-          axis.text.x = element_text(size = rel(2), colour = 'black'),
-          axis.text.y = element_text(size = rel(2), colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
     geom_point(shape = 16, size = 3, alpha = 0.8) +
@@ -404,8 +420,9 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
               col = 'black', lwd = 2, alpha = 0.8) +
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
-    ylab(expression('ln Leaf ' * italic('N')['area'])) +
-    xlab(expression('ln Leaf ' * italic('N')['photo'])))
+    scale_y_continuous(limits = c(-2.5, 7.5)) +
+    ylab(expression('ln ' * italic('N')['area'])) +
+    xlab(expression('ln ' * italic('N')['photo'])))
   
 ## find slope and intercept from mixed effects model
 nstructure_slope <- summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 2]
@@ -421,12 +438,12 @@ nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN
     theme(legend.position = c(0, 1),
           legend.justification = c(0, 1),
           legend.title = element_text(size = 20),
-          legend.text = element_text(size = 20),
+          legend.text = element_text(size = 15),
           legend.background = element_rect(fill = 'white', colour = 'black'),
-          axis.title.y=element_text(size=rel(3), colour = 'black'),
-          axis.title.x=element_text(size=rel(3), colour = 'black'),
-          axis.text.x=element_text(size=rel(2), colour = 'black'),
-          axis.text.y=element_text(size=rel(2), colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
     geom_point(shape = 16, size = 2, alpha = 0.8) +
@@ -436,30 +453,27 @@ nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN
               col = 'black', lwd = 3, alpha = 0.8) +
     geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
-    ylab(expression('ln Leaf ' * italic('N')['area'])) +
-    xlab(expression('ln Leaf ' * italic('N')['structure'])))
+    scale_y_continuous(limits = c(-2.5, 7.5)) +
+    ylab(expression('ln ' * italic('N')['area'])) +
+    xlab(expression('ln ' * italic('N')['structure'])))
 
 (npred_plot <- npred_structure_plot + npred_photo_plot +
     plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 18)))
 
 ## find relative importance for each factor from model
-calc.relip.mm(npred_soil_lmer)$lmg
-relimp_leafn_pred <- calc.relip.mm(npred_soil_lmer)$lmg
-relimp_leafn_pred_df <- NULL
-relimp_leafn_pred_df$Factor <- c('Nphoto', 'Nstructure', 'Soil N', 'Soil P', 'Soil K+µ', 
-                                 'N fixer', 'C3/C4', 'Soil Interactions')
-relimp_leafn_pred_df$Importance <- as.numeric(as.character(c(relimp_leafn_pred[1:7], sum(relimp_leafn_pred[8:11]))))
-sum(relimp_leafn_pred[c(3:5, 8:11)]) # importance of soil
-relimp_leafn_pred_df <- as.data.frame(relimp_leafn_pred_df)
-unexplained <- 1 - sum(relimp_leafn_pred_df$Importance)
-unexplained_pred_df <- data.frame("Unexplained", unexplained)
-names(unexplained_pred_df) <- c("Factor", "Importance")
-relimp_leafn_pred_df <- rbind(relimp_leafn_pred_df, unexplained_pred_df)
+relimp_leafn_pred <- NULL
+relimp_leafn_pred$Factor <- c('N photo', 'N structure', 'Soil N', 'Soil P', 'Soil K+µ', 
+                              'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
+relimp_leafn_pred$Importance <- as.numeric(as.character(c(calc.relip.mm(npred_soil_lmer)$lmg[1:7], 
+                                                     sum(calc.relip.mm(npred_soil_lmer)$lmg[8:11]),
+                                                     1 - sum(calc.relip.mm(npred_soil_lmer)$lmg))))
+relimp_leafn_pred_df <- as.data.frame(relimp_leafn_pred)
 
 (narea_pred_treemap <- ggplot(relimp_leafn_pred_df, 
                               aes(area = Importance, label = Factor, fill = Importance)) +
-    theme(plot.tag = element_text(size = 30)) +
+    theme(legend.title = element_text(size = 20),
+          legend.text = element_text(size = 15)) +
     scale_fill_gradient(low = "burlywood1", high = "burlywood4") +
     geom_treemap(colour = 'black', start = "topleft") +
     geom_treemap_text(colour = "black", place = "centre",
@@ -501,7 +515,7 @@ lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(lai_lmer)
 Anova(lai_lmer)
 
-cld.emmGrid(emmeans(lai_lmer, ~Ntrt_fac * Ptrt_fac))
+cld.emmGrid(emmeans(lai_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
 lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                       'Soil N x Soil K', 'Soil P x Soil K', 
@@ -519,7 +533,7 @@ live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(live_mass_lmer)
 Anova(live_mass_lmer)
 
-cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac))
+cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
 live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                        'Soil N x Soil K', 'Soil P x Soil K', 
@@ -530,51 +544,64 @@ live_mass_model$p <- as.matrix(Anova(live_mass_lmer)[1:7, 3])
 write.csv(live_mass_model, 'tables/live_mass_model.csv')
 
 ### assign treatment group labels
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '0'] <- '-N, -P'
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '0'] <- '+N, -P'
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '0' & leaf_site$Ptrt_fac == '1'] <- '-N, +P'
-leaf_site$NPgroup[leaf_site$Ntrt_fac == '1' & leaf_site$Ptrt_fac == '1'] <- '+N, +P'
+leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '0'] <- '-P, -K'
+leaf_site$PKgroup[leaf_site$Ptrt_fac == '1' & leaf_site$Ktrt_fac == '0'] <- '+P, -K'
+leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '1'] <- '-P, +K'
+leaf_site$PKgroup[leaf_site$Ptrt_fac == '1' & leaf_site$Ktrt_fac == '1'] <- '+P, +K'
 
 ### make figures
-lai_letters <- data.frame(NPgroup = c("-N, -P", "-N, +P", "+N, -P", "+N, +P"), 
-                          y = c(2.1, 2.1, 2.1, 2.1), 
-                          letter = c("a", "a", "b", "c"))
+lai_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
+                          PKgroup = c('-P, -K', '-P, -K', '+P, -K', '+P, -K',
+                                       '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
+                          Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
+                          y = c(2.1, 2.1, 2.1, 2.1, 2.1, 2.1, 2.1, 2.1), 
+                          letter = c("a", "a", "a", "a", "ab", "ab", "bc", "c"))
+lai_letters$Ntrt_fac <- as.factor(lai_letters$Ntrt_fac)
 
 (lai_plot <- ggplot(data = leaf_site, 
-                  aes(x = NPgroup, y = log(lai_mean))) +
-  theme(legend.position = "none",
-        axis.title.y = element_text(size = rel(3), colour = 'black'),
-        axis.title.x = element_text(size = rel(3), colour = 'black'),
-        axis.text.x = element_text(size = rel(2), colour = 'black'),
-        axis.text.y = element_text(size = rel(2), colour = 'black'),
+                  aes(x = PKgroup, y = log(lai_mean), fill = Ntrt_fac)) +
+  theme(legend.position = "none", 
+        axis.title.y = element_text(size = 30, colour = 'black'),
+        axis.title.x = element_text(size = 30, colour = 'black'),
+        axis.text.x = element_text(size = 20, colour = 'black'),
+        axis.text.y = element_text(size = 20, colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "white")) +
-    geom_boxplot(outlier.color = NA, fill = 'white') +
-    geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
-    scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
-    geom_text(data = lai_letters, aes(y = y, label = letter), size = 6) +
-    xlab('N x P treatment') +
+    geom_boxplot(outlier.color = NA) +
+    # geom_dotplot(aes(fill = Ntrt_fac), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
+    scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
+    geom_text(data = lai_letters, aes(x = x, y = y, label = letter), size = 6) +
+    xlab('P x K treatment') +
     ylab(expression('ln LAI (m' ^ '2' *' m' ^'-2' * ')')))
 
-live_mass_letters <- data.frame(NPgroup = c("-N, -P", "-N, +P", "+N, -P", "+N, +P"), 
-                          y = c(7.8, 7.8, 7.8, 7.8), 
-                          letter = c("a", "b", "b", "c"))
+live_mass_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
+                                PKgroup = c('-P, -K', '-P, -K', '+P, -K', '+P, -K',
+                                            '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
+                                Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
+                                y = c(7.8, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8), 
+                                letter = c("a", "ab", "abc", "bc", "bc", "c", "cd", "d"))
+live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
 
 (live_mass_plot <- ggplot(data = leaf_site, 
-                  aes(x = NPgroup, y = log(live_mass_mean))) +
-    theme(legend.position = "none", 
-          axis.title.y = element_text(size = rel(3), colour = 'black'),
-          axis.title.x = element_text(size = rel(3), colour = 'black'),
-          axis.text.x = element_text(size = rel(2), colour = 'black'),
-          axis.text.y = element_text(size = rel(2), colour = 'black'),
+                  aes(x = PKgroup, y = log(live_mass_mean), fill = Ntrt_fac)) +
+    theme(legend.position = c(0, 0),
+          legend.justification = c(0, 0),
+          legend.title = element_text(size = 20),
+          legend.text = element_text(size = 15),
+          legend.background = element_rect(fill = 'white', colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "white")) +
-    geom_boxplot(outlier.color = NA, fill = 'white') +
-    geom_dotplot(aes(fill = NPgroup), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
-    scale_fill_manual(values = c('grey', 'blue', 'red', 'purple')) +
-    geom_text(data = live_mass_letters, aes(y = y, label = letter), size = 6) +
-    xlab('N x P treatment') +
-    ylab(expression('ln Biomass (g m' ^ '2' * ')')))
+    geom_boxplot(outlier.color = NA) +
+    # geom_dotplot(aes(fill = Ntrt_fac), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
+    scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
+    geom_text(data = live_mass_letters, aes(x = x, y = y, label = letter), size = 6) +
+    labs(fill = "Soil N") +
+    xlab('P x K treatment') +
+    ylab(expression('ln AGB (g)')))
 
 (plant_plot <- live_mass_plot / lai_plot +
     plot_annotation(tag_levels = 'A') & 
@@ -718,28 +745,34 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
                                             'delta_narea_highlma')
 
 (delta_live_mass_plot <- ggplot(data = delta_live_mass_plot_data, 
-       aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
-  theme(legend.position = "none", 
-        axis.title.y = element_text(size = rel(2.5), colour = 'black'),
-        axis.title.x = element_text(size = rel(2.5), colour = 'black'),
-        axis.text.x = element_text(size = rel(2), colour = 'black'),
-        axis.text.y = element_text(size = rel(2), colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "grey")) +
-  geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
-  scale_size_continuous(range = c(1, 3)) +
-  scale_fill_gradient(low = 'blue', high = 'red') +
-  geom_line(data = delta_live_mass_plot_trend_df, 
-            aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
-            size = 3, colour = 'blue', alpha = 1, lty = 2) +
-  geom_line(data = delta_live_mass_plot_trend_df, 
-            aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
-            size = 3, colour = 'purple', alpha = 1, lty = 2) +
-  geom_line(data = delta_live_mass_plot_trend_df, 
-            aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
-            size = 3, colour = 'red', alpha = 1, lty = 1) +
-  ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
-  xlab(expression('∆' *'AG Biomass' * ' (%)')))
+                                aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
+    theme(legend.position = c(1, 1),
+          legend.justification = c(1, 1),
+          legend.title = element_text(size = 20),
+          legend.text = element_text(size = 15),
+          legend.background = element_rect(fill = 'white', colour = 'black'),
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
+    scale_size_continuous(range = c(1, 3)) +
+    scale_fill_gradient(low = 'blue', high = 'red') +
+    geom_line(data = delta_live_mass_plot_trend_df, 
+              aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
+              size = 3, colour = 'blue', alpha = 1, lty = 2) +
+    geom_line(data = delta_live_mass_plot_trend_df, 
+              aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
+              size = 3, colour = 'purple', alpha = 1, lty = 2) +
+    geom_line(data = delta_live_mass_plot_trend_df, 
+              aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
+              size = 3, colour = 'red', alpha = 1, lty = 1) +
+    labs(fill = expression('∆' * italic('M')['area'])) +
+    guides(size = "none") +
+    ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
+    xlab(expression('∆' *'AGB' * ' (%)')))
 
 
 #### save plots ####
