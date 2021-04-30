@@ -1,0 +1,8 @@
+,Var,chisq,df,p
+1,Soil N,49.148,1,0.000
+2,Soil P,8.287,1,0.004
+3,Soil K+µ,0.747,1,0.388
+4,Soil N x Soil P,5.086,1,0.024
+5,Soil N x Soil P,1.758,1,0.185
+6,Soil P x Soil K,0.446,1,0.504
+7,Soil N x Soil P x Soil K,0.279,1,0.597
