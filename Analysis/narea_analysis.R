@@ -307,7 +307,7 @@ Narea_model$SE <- c(NA, NA, NA,
                        summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 3],
                        NA, NA, NA, NA, NA, NA)
 Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:15, 3]
-Narea_model$RelImp <- c(relimp_leafn[1:15])
+Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:15]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
 write.csv(Narea_model, 'tables/Narea_model.csv')
@@ -491,7 +491,7 @@ Narea_pred_model$SE <- c(summary(emtrends(npred_soil_lmer, ~lognphoto, var = "lo
                          summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 3],
                          NA, NA, NA, NA, NA, NA, NA, NA, NA)
 Narea_pred_model$p <- as.matrix(Anova(npred_soil_lmer))[1:11, 3]
-Narea_pred_model$RelImp <- c(relimp_leafn_pred[1:11])
+Narea_pred_model$RelImp <- as.matrix(calc.relip.mm(npred_soil_lmer)$lmg)[1:11]
 Narea_pred_model$RelImp <- Narea_pred_model$RelImp * 100
 
 write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
@@ -515,8 +515,6 @@ lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(lai_lmer)
 Anova(lai_lmer)
 
-cld.emmGrid(emmeans(lai_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
-
 lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                       'Soil N x Soil K', 'Soil P x Soil K', 
                                       'Soil N x Soil P x Soil K')) 
@@ -533,8 +531,6 @@ live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(live_mass_lmer)
 Anova(live_mass_lmer)
 
-cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
-
 live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                        'Soil N x Soil K', 'Soil P x Soil K', 
                                        'Soil N x Soil P x Soil K')) 
@@ -550,12 +546,14 @@ leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '1'] <- '-P,
 leaf_site$PKgroup[leaf_site$Ptrt_fac == '1' & leaf_site$Ktrt_fac == '1'] <- '+P, +K'
 
 ### make figures
+cld.emmGrid(emmeans(lai_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 lai_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
                           PKgroup = c('-P, -K', '-P, -K', '+P, -K', '+P, -K',
                                        '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
                           Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
                           y = c(2.1, 2.1, 2.1, 2.1, 2.1, 2.1, 2.1, 2.1), 
-                          letter = c("a", "a", "a", "a", "ab", "ab", "bc", "c"))
+                          letter = c("a", "ab", "a", "ab", 
+                                     "a", "bc", "a", "c"))
 lai_letters$Ntrt_fac <- as.factor(lai_letters$Ntrt_fac)
 
 (lai_plot <- ggplot(data = leaf_site, 
@@ -574,12 +572,14 @@ lai_letters$Ntrt_fac <- as.factor(lai_letters$Ntrt_fac)
     xlab('P x K treatment') +
     ylab(expression('ln LAI (m' ^ '2' *' m' ^'-2' * ')')))
 
+cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 live_mass_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
-                                PKgroup = c('-P, -K', '-P, -K', '+P, -K', '+P, -K',
-                                            '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
+                                PKgroup = c('-P, -K', '-P, -K', '-P, +K', '-P, +K',
+                                            '+P, -K', '+P, -K', '+P, +K', '+P, +K'),
                                 Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
                                 y = c(7.8, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8), 
-                                letter = c("a", "ab", "abc", "bc", "bc", "c", "cd", "d"))
+                                letter = c("ab", "abc", "a", "c", 
+                                           "bc", "cd", "bc", "d"))
 live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
 
 (live_mass_plot <- ggplot(data = leaf_site, 
