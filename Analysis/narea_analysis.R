@@ -246,7 +246,7 @@ lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
 
 ## find relative importance for each factor from model
 relimp_leafn <- NULL
-relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'VPD', 'Elevation', 
+relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'VPD', 'Elevation',
                          'Leaf Mass Area', 'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
 relimp_leafn$Importance <- as.numeric(as.character(c(calc.relip.mm(leafNarea_lmer)$lmg[1:11], 
                                                         sum(calc.relip.mm(leafNarea_lmer)$lmg[12:15]),
@@ -259,37 +259,49 @@ tm$x <- (tm$xmax + tm$xmin) / 2
 tm$y <- (tm$ymax + tm$ymin) / 2
 
 narea_tm <- full_join(relimp_leafn_df, tm, by = "Factor")
-
-# ggplot(narea_tm, aes(xmin = xmin, ymin = ymax, xmax = xmin, ymax = ymax)) + 
-#   # add fill and borders for groups and subgroups
-#   geom_rect(aes(fill = "white", size = Importance),
-#             show.legend = FALSE, color = "black", alpha = .3) +
-#   scale_size_area(max_size = 5) +
-#   scale_fill_identity() +
-#   ggfittext::geom_fit_text(aes(label = Factor), min.size = 1) +
-#   scale_x_continuous(expand = c(0, 0)) +
-#   scale_y_continuous(expand = c(0, 0)) +
-#   theme_void()
+narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'χ', 'italic(T)[g]', 'italic(I)[g]',
+                   'italic(D)[g]', 'Elevation', 'italic(M)[area]', 'N~fixer', 
+                   'C[3]/C[4]', 'Soil~Interactions', 'Unexplained')
 
 (narea_treemap <- ggplot(narea_tm, 
-                         aes(area = Importance, 
-                             label = Factor, fill = Importance)) +
+                         aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
+                             label = name)) +
+    geom_rect(aes(fill = Importance), color = "black") +
     theme(legend.title = element_text(size = 20),
-          legend.text = element_text(size = 15)) +
+          legend.text = element_text(size = 15),
+          legend.position = "right",
+          panel.background = element_rect(fill = 'white'),
+          axis.title = element_text(colour = 'white'),
+          axis.text = element_text(colour = 'white'),
+          axis.ticks = element_line(colour = "white")) + 
     scale_fill_gradient(low = "burlywood1", high = "burlywood4") +
-    geom_treemap(colour = 'black', start = "topleft") +
-    geom_treemap_text(min.size = 1, colour = "black", place = "centre",
-                      grow = TRUE, start = "topleft"))
+    geom_text(data = filter(narea_tm, Factor == 'LMA' | Factor == 'PAR' | Factor == 'Temperature'), 
+              aes(x = x, y = y), parse = T, size = 14) +
+    geom_text(data = filter(narea_tm, Factor == 'χ'), 
+              aes(x = x, y = y), parse = T, size = 10, family = 'Times') +
+    geom_text(data = filter(narea_tm, Factor == 'N fixer' | Factor == 'VPD' | Factor == 'C3/C4'), 
+              aes(x = x, y = y), parse = T, size = 8) +
+    geom_text(data = filter(narea_tm, Factor == 'Elevation' | Factor == 'Soil N'), 
+              aes(x = x, y = y), parse = T, size = 5) +
+    ggrepel::geom_text_repel(data = filter(narea_tm, x > 0.9), 
+                             aes(x = x, y = y), parse = T, size = 4, 
+                             direction = "y", xlim = c(1.1, NA)) +
+    scale_x_continuous(limits = c(0, 1.3), expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)))
 
 (narea_plot_treemap <- narea_plot + narea_treemap +
   plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 24)))
+  
+ggsave("plots/narea_plot_treemap.jpeg", plot = narea_plot_treemap, 
+       width = 38, height = 18, units = "cm")
 
 ### table with model results
 Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 
                              'ln PAR', 'ln VPD', 'Elevation', 'ln LMA', 'N fixer', 'C3/C4',
                              'Soil N x Soil P', 'Soil N x Soil K', 'Soil P x Soil K',
                              'Soil N x Soil P x Soil K'))
+Narea_model$df <- as.matrix(Anova(leafNarea_lmer))[1:15, 2]
 Narea_model$Slope <- c(NA, NA, NA,
                       summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2],
@@ -311,6 +323,8 @@ Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:15]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
 write.csv(Narea_model, 'tables/Narea_model.csv')
+
+compute_redres(leafNarea_lmer, type = "std_cond")
 
 
 #### Narea predictions ####
@@ -470,6 +484,7 @@ relimp_leafn_pred$Importance <- as.numeric(as.character(c(calc.relip.mm(npred_so
                                                      1 - sum(calc.relip.mm(npred_soil_lmer)$lmg))))
 relimp_leafn_pred_df <- as.data.frame(relimp_leafn_pred)
 
+
 (narea_pred_treemap <- ggplot(relimp_leafn_pred_df, 
                               aes(area = Importance, label = Factor, fill = Importance)) +
     theme(legend.title = element_text(size = 20),
@@ -484,6 +499,7 @@ Narea_pred_model <- data.frame(Var = c('ln Nphoto', 'ln Nstructure', 'Soil N', '
                                        'Soil K+µ', 'N fixer', 'C3/C4', 'Soil N x Soil P', 
                                        'Soil N x Soil K', 'Soil P x Soil K', 
                                        'Soil N x Soil P x Soil K')) 
+Narea_pred_model$df <- as.matrix(Anova(npred_soil_lmer))[1:11, 2]
 Narea_pred_model$Slope <- c(summary(emtrends(npred_soil_lmer, ~lognphoto, var = "lognphoto"))[1, 2],
                             summary(emtrends(npred_soil_lmer, ~lognstructure, var = "lognstructure"))[1, 2],
                             NA, NA, NA, NA, NA, NA, NA, NA, NA)
