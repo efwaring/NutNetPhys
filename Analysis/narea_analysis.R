@@ -155,7 +155,7 @@ leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
-summary(leafNarea_lmer)
+summary(leafNarea_lmer) # N = 1,812
 Anova(leafNarea_lmer)
 
 ### make figures
@@ -247,7 +247,7 @@ lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
 ## find relative importance for each factor from model
 relimp_leafn <- NULL
 relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'VPD', 'Elevation',
-                         'Leaf Mass Area', 'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
+                         'LMA', 'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
 relimp_leafn$Importance <- as.numeric(as.character(c(calc.relip.mm(leafNarea_lmer)$lmg[1:11], 
                                                         sum(calc.relip.mm(leafNarea_lmer)$lmg[12:15]),
                                                         1 - sum(calc.relip.mm(leafNarea_lmer)$lmg))))
@@ -280,7 +280,7 @@ narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'χ', 'italic(T)[g]', 'ita
     geom_text(data = filter(narea_tm, Factor == 'χ'), 
               aes(x = x, y = y), parse = T, size = 10, family = 'Times') +
     geom_text(data = filter(narea_tm, Factor == 'N fixer' | Factor == 'VPD' | Factor == 'C3/C4'), 
-              aes(x = x, y = y), parse = T, size = 8) +
+              aes(x = x, y = y), parse = T, size = 7) +
     geom_text(data = filter(narea_tm, Factor == 'Elevation' | Factor == 'Soil N'), 
               aes(x = x, y = y), parse = T, size = 5) +
     ggrepel::geom_text_repel(data = filter(narea_tm, x > 0.9), 
@@ -293,9 +293,6 @@ narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'χ', 'italic(T)[g]', 'ita
   plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 24)))
   
-ggsave("plots/narea_plot_treemap.jpeg", plot = narea_plot_treemap, 
-       width = 38, height = 18, units = "cm")
-
 ### table with model results
 Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 
                              'ln PAR', 'ln VPD', 'Elevation', 'ln LMA', 'N fixer', 'C3/C4',
@@ -323,8 +320,6 @@ Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:15]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
 write.csv(Narea_model, 'tables/Narea_model.csv')
-
-compute_redres(leafNarea_lmer, type = "std_cond")
 
 
 #### Narea predictions ####
@@ -405,7 +400,7 @@ npred_soil_lmer <- lmer(log(narea) ~ lognphoto + lognstructure +
                          (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac),
                   data = leaf_chi_subset)
 # plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
-summary(npred_soil_lmer)
+summary(npred_soil_lmer) # N = 1,812
 Anova(npred_soil_lmer)
 
 ### make figures
@@ -484,15 +479,37 @@ relimp_leafn_pred$Importance <- as.numeric(as.character(c(calc.relip.mm(npred_so
                                                      1 - sum(calc.relip.mm(npred_soil_lmer)$lmg))))
 relimp_leafn_pred_df <- as.data.frame(relimp_leafn_pred)
 
+tm_pred <- treemapify(data = relimp_leafn_pred_df,
+                 area = "Importance", start = "topleft")
+tm_pred$x <- (tm_pred$xmax + tm_pred$xmin) / 2
+tm_pred$y <- (tm_pred$ymax + tm_pred$ymin) / 2
 
-(narea_pred_treemap <- ggplot(relimp_leafn_pred_df, 
-                              aes(area = Importance, label = Factor, fill = Importance)) +
+narea_tm_pred <- full_join(relimp_leafn_pred_df, tm_pred, by = "Factor")
+narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'Soil~P', 'Soil~K[+µ]', 
+                        'N~fixer', 'C[3]/C[4]', 'Soil~Interactions', 'Unexplained')
+
+(narea_pred_treemap <- ggplot(narea_tm_pred, 
+                         aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
+                             label = name)) +
+    geom_rect(aes(fill = Importance), color = "black") +
     theme(legend.title = element_text(size = 20),
-          legend.text = element_text(size = 15)) +
+          legend.text = element_text(size = 15),
+          legend.position = "right",
+          panel.background = element_rect(fill = 'white'),
+          axis.title = element_text(colour = 'white'),
+          axis.text = element_text(colour = 'white'),
+          axis.ticks = element_line(colour = "white")) + 
     scale_fill_gradient(low = "burlywood1", high = "burlywood4") +
-    geom_treemap(colour = 'black', start = "topleft") +
-    geom_treemap_text(colour = "black", place = "centre",
-                    grow = TRUE, start = "topleft"))
+    geom_text(data = filter(narea_tm_pred, Factor == 'N structure' | Factor == 'N photo' | Factor == 'C3/C4'),
+              aes(x = x, y = y), parse = T, size = 14) +
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil P'),
+              aes(x = x, y = y), parse = T, size = 10) +
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil N' | Factor == 'Unexplained' | Factor == 'N fixer'),
+              aes(x = x, y = y), parse = T, size = 8) +
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions' | Factor == 'Soil K+µ'),
+              aes(x = x, y = y), parse = T, size = 6) +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(expand = c(0, 0)))
 
 ### table with model results
 Narea_pred_model <- data.frame(Var = c('ln Nphoto', 'ln Nstructure', 'Soil N', 'Soil P', 
@@ -528,7 +545,7 @@ lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                   (1|site_code) + (1|site_code:block), 
                 data = leaf_site)
 ## plot(resid(lai_lmer) ~ fitted(lai_lmer))
-summary(lai_lmer)
+summary(lai_lmer) # N = 551
 Anova(lai_lmer)
 
 lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
@@ -544,7 +561,7 @@ live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                         (1|site_code) + (1|site_code:block), 
                       data = leaf_site)
 # plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
-summary(live_mass_lmer)
+summary(live_mass_lmer) # N = 763
 Anova(live_mass_lmer)
 
 live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
@@ -708,7 +725,7 @@ delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass +
                             (1|Taxon:site_code:block_fac), 
                         data = delta_live_mass_data)
 # plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
-summary(delta_live_mass_lm)
+summary(delta_live_mass_lm) # N = 310
 Anova(delta_live_mass_lm)
 
 delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3/C4', 
