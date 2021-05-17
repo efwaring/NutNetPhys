@@ -83,6 +83,26 @@ calc.relip.mm <- function(model,type = 'lmg') {
   return(importances)
 }
 
+calc.relip.boot.mm <- function(model,type = 'lmg') {
+  if (!isLMM(model) & !isGLMM(model)) {
+    stop('Currently supports only lmer/glmer objects', call. = FALSE)
+  }
+  require(lme4)
+  X <- getME(model,'X')
+  X <- X[ , -1]
+  Y <- getME(model, 'y')
+  s_resid <- sigma(model)
+  s_effect <- getME(model, 'theta') * s_resid
+  s2 <- sum(s_resid^2, s_effect^2)
+  V <- Diagonal(x = s2, n = nrow(X))
+  YX <- cbind(Y, X)
+  cov_XY <- solve(t(YX) %*% solve(V) %*% as.matrix(YX))
+  colnames(cov_XY) <- rownames(cov_XY) <- colnames(YX)
+  bootresults <- boot.relimp(as.matrix(cov_XY), b=1000, rela = F, type = type)
+  importances <- booteval.relimp(bootresults, norank=T)
+  return(importances)
+}
+
 
 #### create hypothesis figure ####
 ### leaf N and chi by N supply with different differences in N demand
@@ -147,16 +167,30 @@ leaf_chi_subset = subset(leaf, chi > 0.2 & chi < 0.95) # lose 700 points
 
 ### linear mixed effects model
 leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
+leaf_chi_subset$logpar_per_leaf_area <- log(leaf_chi_subset$par_per_leaf_area)
 leaf_chi_subset$logvpd <- log(leaf_chi_subset$vpd)
 leaf_chi_subset$loglma <- log(leaf_chi_subset$lma)
-leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + chi + 
-                        tmp + logpar +  logvpd + z +
-                        loglma + Nfix + photosynthetic_pathway +
+leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + 
+                        tmp + 
+                        logpar +
+                        loglma + 
+                         # chi + 
+                         Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
 summary(leafNarea_lmer) # N = 1,812
 Anova(leafNarea_lmer)
+
+### get some stats
+#### soil nitrogen effect
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])/
+  summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]
+
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[2,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3])/
+  summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3]
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[4,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3])/
+  summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3]
 
 ### make figures
 ## find slope and intercept from mixed effects model
@@ -183,27 +217,27 @@ tmp_trend <- as.data.frame(cbind(tmp_seq, tmp_trend))
     xlab('Mean Annual Growing Season Temperature (°C)'))
 
 ## find slope and intercept from mixed effects model
-emtrends(leafNarea_lmer, ~z, var = "z")
-emmeans(leafNarea_lmer, ~z, at = list(z = 0))
-z_slope <- summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2] # slope = 6.698e-05
-z_intercept <- summary(emmeans(leafNarea_lmer, ~z, at = list(z = 0)))[1, 2] # intercept = 1.37
-z_seq <- seq(min(leaf$z, na.rm = T), max(leaf$z, na.rm = T), 0.01)
-z_trend <- z_intercept + z_seq * z_slope
-z_trend <- as.data.frame(cbind(z_seq, z_trend))
-
-(z_plot <- ggplot(data = leaf_chi_subset, aes(x = z, y = log(narea))) + 
-    geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
-    geom_line(data = z_trend, aes(x = z_seq, y = z_trend), 
-              col = 'black', lwd = 2, alpha = 0.8) +
-    theme(legend.position = "none", 
-          axis.title.y = element_text(size = 30, colour = 'black'),
-          axis.title.x = element_text(size = 30, colour = 'black'),
-          axis.text.x = element_text(size = 20, colour = 'black'),
-          axis.text.y = element_text(size = 20, colour = 'black'),
-          panel.background = element_rect(fill = 'white', colour = 'black'),
-          panel.grid.major = element_line(colour = "grey")) +
-    ylab(expression('ln ' * italic('N')['area'])) +
-    xlab('Elevation (m)'))
+# emtrends(leafNarea_lmer, ~z, var = "z")
+# emmeans(leafNarea_lmer, ~z, at = list(z = 0))
+# z_slope <- summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2] # slope = 6.698e-05
+# z_intercept <- summary(emmeans(leafNarea_lmer, ~z, at = list(z = 0)))[1, 2] # intercept = 1.37
+# z_seq <- seq(min(leaf$z, na.rm = T), max(leaf$z, na.rm = T), 0.01)
+# z_trend <- z_intercept + z_seq * z_slope
+# z_trend <- as.data.frame(cbind(z_seq, z_trend))
+# 
+# (z_plot <- ggplot(data = leaf_chi_subset, aes(x = z, y = log(narea))) + 
+#     geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
+#     geom_line(data = z_trend, aes(x = z_seq, y = z_trend), 
+#               col = 'black', lwd = 2, alpha = 0.8) +
+#     theme(legend.position = "none", 
+#           axis.title.y = element_text(size = 30, colour = 'black'),
+#           axis.title.x = element_text(size = 30, colour = 'black'),
+#           axis.text.x = element_text(size = 20, colour = 'black'),
+#           axis.text.y = element_text(size = 20, colour = 'black'),
+#           panel.background = element_rect(fill = 'white', colour = 'black'),
+#           panel.grid.major = element_line(colour = "grey")) +
+#     ylab(expression('ln ' * italic('N')['area'])) +
+#     xlab('Elevation (m)'))
 
 ## find slope and intercept from mixed effects model
 emtrends(leafNarea_lmer, ~loglma, var = "loglma")
@@ -227,6 +261,30 @@ lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
           panel.grid.major = element_line(colour = "grey")) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('M')['area'])))
+
+## find slope and intercept from mixed effects model
+emtrends(leafNarea_lmer, ~logpar, var = "logpar")
+emmeans(leafNarea_lmer, ~logpar, at = list(logpar = 0))
+par_slope <- summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 2] # slope = 0.936
+par_intercept <- summary(emmeans(leafNarea_lmer, ~logpar, at = list(logpar = 0)))[1, 2] # intercept = -3.32
+par_seq <- seq(min(leaf_chi_subset$logpar, na.rm = T), max(leaf_chi_subset$logpar, na.rm = T), 0.01)
+par_trend <- par_intercept + par_seq * par_slope
+par_trend <- as.data.frame(cbind(par_seq, par_trend))
+
+(par_plot <- ggplot(data = leaf_chi_subset, aes(x = log(par), y = log(narea))) + 
+    geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
+    geom_line(data = par_trend, aes(x = par_seq, y = par_trend), 
+              col = 'black', lwd = 2, alpha = 0.8) +
+    theme(legend.position = "none", 
+          axis.title.y = element_text(size = 30, colour = 'black'),
+          axis.title.x = element_text(size = 30, colour = 'black'),
+          axis.text.x = element_text(size = 20, colour = 'black'),
+          axis.text.y = element_text(size = 20, colour = 'black'),
+          panel.background = element_rect(fill = 'white', colour = 'black'),
+          panel.grid.major = element_line(colour = "grey")) +
+    ylab(expression('ln ' * italic('N')['area'])) +
+    xlab(expression('ln ' * italic('I')['g'])))
+
     
 (narea_plot <- ggplot(data = leaf_chi_subset, 
                          aes(x = Ntrt_fac, y = log(narea))) +
