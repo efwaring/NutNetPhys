@@ -170,11 +170,15 @@ leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
 leaf_chi_subset$logpar_per_leaf_area <- log(leaf_chi_subset$par_per_leaf_area)
 leaf_chi_subset$logvpd <- log(leaf_chi_subset$vpd)
 leaf_chi_subset$loglma <- log(leaf_chi_subset$lma)
+leaf$logpar <- log(leaf$par)
+leaf$logpar_per_leaf_area <- log(leaf$par_per_leaf_area)
+leaf$logvpd <- log(leaf$vpd)
+leaf$loglma <- log(leaf$lma)
 leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + 
                         tmp + 
                         logpar +
                         loglma + 
-                         # chi + 
+                         chi + 
                          Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
@@ -191,6 +195,12 @@ Anova(leafNarea_lmer)
   summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3]
 (summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[4,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3])/
   summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3]
+
+(summary(emmeans(leafNarea_lmer, ~Nfix))[2,2] - summary(emmeans(leafNarea_lmer, ~Nfix))[1,2])/
+  summary(emmeans(leafNarea_lmer, ~Nfix))[1,2]
+
+(summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2] - summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[2,2])/
+  summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2]
 
 ### make figures
 ## find slope and intercept from mixed effects model
