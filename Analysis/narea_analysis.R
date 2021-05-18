@@ -186,6 +186,8 @@ leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(leafNarea_lmer) # N = 1,812
 Anova(leafNarea_lmer)
 
+pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
+
 ### get some stats
 #### soil nitrogen effect
 (summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])/
@@ -319,6 +321,11 @@ relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', '
 relimp_leafn$Importance <- as.numeric(as.character(c(calc.relip.mm(leafNarea_lmer)$lmg[1:11], 
                                                         sum(calc.relip.mm(leafNarea_lmer)$lmg[12:15]),
                                                         1 - sum(calc.relip.mm(leafNarea_lmer)$lmg))))
+
+sum(calc.relip.mm(leafNarea_lmer)$lmg[c(1:3, 10:13)])
+sum(calc.relip.mm(leafNarea_lmer)$lmg[c(8:9)])
+sum(calc.relip.mm(leafNarea_lmer)$lmg[c(4:5)])
+
 relimp_leafn_df <- as.data.frame(relimp_leafn)
 
 tm <- treemapify(data = relimp_leafn_df,
@@ -547,6 +554,8 @@ relimp_leafn_pred$Importance <- as.numeric(as.character(c(calc.relip.mm(npred_so
                                                      1 - sum(calc.relip.mm(npred_soil_lmer)$lmg))))
 relimp_leafn_pred_df <- as.data.frame(relimp_leafn_pred)
 
+sum(calc.relip.mm(npred_soil_lmer)$lmg[c(3:5, 8:11)])
+
 tm_pred <- treemapify(data = relimp_leafn_pred_df,
                  area = "Importance", start = "topleft")
 tm_pred$x <- (tm_pred$xmax + tm_pred$xmin) / 2
@@ -632,6 +641,13 @@ live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(live_mass_lmer) # N = 763
 Anova(live_mass_lmer)
 
+pwpm(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
+
+(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])/
+  summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]
+(summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[4,3] - summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3])/
+  summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3]
+
 live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                        'Soil N x Soil K', 'Soil P x Soil K', 
                                        'Soil N x Soil P x Soil K')) 
@@ -714,7 +730,8 @@ live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
 leaf_site_N <- leaf_chi_subset %>%
   group_by(site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac, block_fac, fence, trt,
            plot, Taxon, grass, Nfix, photosynthetic_pathway) %>%
-  summarise_at(vars(narea, spp_lai, chi, spp_live_mass, spp_mass_N, max_cover, lma, p_pet, vpd, tmp),
+  summarise_at(vars(narea, spp_lai, chi, spp_live_mass, spp_mass_N, max_cover, lma, p_pet, vpd, tmp,
+                    Ambient_PAR, Ground_PAR, par_rat),
                mean, na.rm = TRUE)
 
 ### subset by low N treatment
@@ -796,6 +813,8 @@ delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass +
 summary(delta_live_mass_lm) # N = 310
 Anova(delta_live_mass_lm)
 
+emmeans(delta_live_mass_lm, ~Ptrt_fac)
+
 delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3/C4', 
                                             'N fixer', 'delta LMA', 'delta Chi', 'Soil P x Soil K',
                                             'delta AGB x delta LMA', 'delta AGB x delta Chi',
@@ -875,6 +894,26 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
     ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
     xlab(expression('∆' *'AGB' * ' (%)')))
 
+
+#### what determines the biomass responses??
+delta_live_mass_response_lm <- lmer(delta_live_mass ~ 
+                                      spp_live_mass.x * Ptrt_fac * Ktrt_fac +
+                                      tmp.x + p_pet.x +
+                             (1|Taxon) + (1|Taxon:site_code) +
+                             (1|Taxon:site_code:block_fac), 
+                           data = delta_live_mass_data)
+# plot(resid(delta_live_mass_response_lm) ~ fitted(delta_live_mass_response_lm))
+summary(delta_live_mass_response_lm) # N = 310
+Anova(delta_live_mass_response_lm)
+
+plot(delta_live_mass ~ (spp_live_mass.x), data = delta_live_mass_data, xlim = c(0, 400))
+
+#### discussion things
+leaf_site_climate <- leaf_chi_subset %>%
+  group_by(site_code) %>%
+  summarise_at(vars(par, p_pet, vpd, tmp),
+               mean, na.rm = TRUE)
+cor(leaf_site_climate$par, leaf_site_climate$tmp)^2
 
 #### save plots ####
 
