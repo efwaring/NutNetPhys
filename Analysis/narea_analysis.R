@@ -120,7 +120,8 @@ hypothesis_data$Narea <- as.numeric(as.character(hypothesis_data$Narea))
 
 (hypothesis_plot <- ggplot(data = hypothesis_data, 
                          aes(x = (1/beta), y = Narea, col = demand)) +
-  theme(legend.position = c(0.3, 0.9),
+  theme(legend.position = c(0, 1),
+        legend.justification = c(0, 1),
         legend.text = element_text(size = 25),
         axis.title.y = element_text(size = rel(4), colour = 'black'),
         axis.title.x = element_text(size = rel(4), colour = 'black'),
@@ -135,11 +136,10 @@ hypothesis_data$Narea <- as.numeric(as.character(hypothesis_data$Narea))
   geom_line(size = 4, aes(linetype = demand, color = demand)) +
   scale_linetype_manual(values = c(1, 2), guide = F) +
   scale_colour_manual(values = c('black', 'grey'), 
-                      labels = c('∆N demand = ∆N supply', '∆N demand = 0')) +
+                      labels = c('∆AGB = high', '∆AGB = low')) +
   guides(color = guide_legend(title = NULL)) +
   ylab(expression(italic('N')['area'])) +
-  xlab('N supply'))
-
+  xlab(expression(italic('N')['availability'])))
 
 #### soil N effects on leaf traits (Narea and chi) ####
 ### load data
@@ -206,8 +206,6 @@ pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
 
 ### make figures
 ## find slope and intercept from mixed effects model
-emtrends(leafNarea_lmer, ~tmp, var = "tmp")
-emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0))
 tmp_slope <- summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2] # slope = -0.0276
 tmp_intercept <- summary(emmeans(leafNarea_lmer, ~tmp, at = list(tmp = 0)))[1, 2] # intercept = 1.75
 tmp_seq <- seq(min(leaf$tmp, na.rm = T), max(leaf$tmp, na.rm = T), 0.01)
@@ -229,31 +227,6 @@ tmp_trend <- as.data.frame(cbind(tmp_seq, tmp_trend))
     xlab('Mean Annual Growing Season Temperature (°C)'))
 
 ## find slope and intercept from mixed effects model
-# emtrends(leafNarea_lmer, ~z, var = "z")
-# emmeans(leafNarea_lmer, ~z, at = list(z = 0))
-# z_slope <- summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2] # slope = 6.698e-05
-# z_intercept <- summary(emmeans(leafNarea_lmer, ~z, at = list(z = 0)))[1, 2] # intercept = 1.37
-# z_seq <- seq(min(leaf$z, na.rm = T), max(leaf$z, na.rm = T), 0.01)
-# z_trend <- z_intercept + z_seq * z_slope
-# z_trend <- as.data.frame(cbind(z_seq, z_trend))
-# 
-# (z_plot <- ggplot(data = leaf_chi_subset, aes(x = z, y = log(narea))) + 
-#     geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
-#     geom_line(data = z_trend, aes(x = z_seq, y = z_trend), 
-#               col = 'black', lwd = 2, alpha = 0.8) +
-#     theme(legend.position = "none", 
-#           axis.title.y = element_text(size = 30, colour = 'black'),
-#           axis.title.x = element_text(size = 30, colour = 'black'),
-#           axis.text.x = element_text(size = 20, colour = 'black'),
-#           axis.text.y = element_text(size = 20, colour = 'black'),
-#           panel.background = element_rect(fill = 'white', colour = 'black'),
-#           panel.grid.major = element_line(colour = "grey")) +
-#     ylab(expression('ln ' * italic('N')['area'])) +
-#     xlab('Elevation (m)'))
-
-## find slope and intercept from mixed effects model
-emtrends(leafNarea_lmer, ~loglma, var = "loglma")
-emmeans(leafNarea_lmer, ~loglma, at = list(loglma = 0))
 lma_slope <- summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 2] # slope = 0.936
 lma_intercept <- summary(emmeans(leafNarea_lmer, ~loglma, at = list(loglma = 0)))[1, 2] # intercept = -3.32
 lma_seq <- seq(min(leaf_chi_subset$loglma, na.rm = T), max(leaf_chi_subset$loglma, na.rm = T), 0.01)
@@ -275,8 +248,6 @@ lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
     xlab(expression('ln ' * italic('M')['area'])))
 
 ## find slope and intercept from mixed effects model
-emtrends(leafNarea_lmer, ~logpar, var = "logpar")
-emmeans(leafNarea_lmer, ~logpar, at = list(logpar = 0))
 par_slope <- summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 2] # slope = 0.936
 par_intercept <- summary(emmeans(leafNarea_lmer, ~logpar, at = list(logpar = 0)))[1, 2] # intercept = -3.32
 par_seq <- seq(min(leaf_chi_subset$logpar, na.rm = T), max(leaf_chi_subset$logpar, na.rm = T), 0.01)
@@ -297,34 +268,48 @@ par_trend <- as.data.frame(cbind(par_seq, par_trend))
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('I')['g'])))
 
+### assign treatment group labels
+leaf_chi_subset$PKgroup[leaf_chi_subset$Ptrt_fac == '0' & leaf_chi_subset$Ktrt_fac == '0'] <- '-P, -K'
+leaf_chi_subset$PKgroup[leaf_chi_subset$Ptrt_fac == '1' & leaf_chi_subset$Ktrt_fac == '0'] <- '+P, -K'
+leaf_chi_subset$PKgroup[leaf_chi_subset$Ptrt_fac == '0' & leaf_chi_subset$Ktrt_fac == '1'] <- '-P, +K'
+leaf_chi_subset$PKgroup[leaf_chi_subset$Ptrt_fac == '1' & leaf_chi_subset$Ktrt_fac == '1'] <- '+P, +K'
     
+cld.emmGrid(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
+leafNarea_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
+                          NPgroup = c('-P, -K', '-P, -K', '+P, -K', '+P, -K', 
+                                      '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
+                          Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
+                          y = c(6.75, 6.75, 6.75, 6.75, 6.75, 6.75, 6.75, 6.75), 
+                          letter = c('a', 'b', 'a', 'b', 
+                                     'a', 'b', 'a', 'b'))
+leafNarea_letters$Ntrt_fac <- as.factor(leafNarea_letters$Ntrt_fac)
+
 (narea_plot <- ggplot(data = leaf_chi_subset, 
-                         aes(x = Ntrt_fac, y = log(narea))) +
-  theme(legend.position = "none", 
+                         aes(x = PKgroup, y = log(narea), fill = Ntrt_fac)) +
+  theme(legend.position = "right",
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 15),
+        legend.background = element_rect(fill = 'white', colour = 'black'),
         axis.title.y = element_text(size = 30, colour = 'black'),
         axis.title.x = element_text(size = 30, colour = 'black'),
         axis.text.x = element_text(size = 20, colour = 'black'),
         axis.text.y = element_text(size = 20, colour = 'black'),
         panel.background = element_rect(fill = 'white', colour = 'black'),
         panel.grid.major = element_line(colour = "white")) +
-    geom_dotplot(binaxis = 'y', binwidth = 0.08, stackdir = 'center', 
-                 fill = 'burlywood', alpha = 0.8) +
-    geom_boxplot(outlier.color = NA, fill = NA, lwd = 1) +
-    scale_x_discrete(labels = c('Ambient', 'Added N')) +
+    geom_boxplot(outlier.color = NA) +
+    geom_text(data = leafNarea_letters, aes(x = x, y = y, label = letter), size = 6) +
+    scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
+    labs(fill = "Soil N") +
     ylab(expression('ln ' * italic('N')['area'])) +
-    xlab('Soil N treatment'))
+    xlab('P x K treatment'))
 
 ## find relative importance for each factor from model
 relimp_leafn <- NULL
-relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 'PAR', 'VPD', 'Elevation',
-                         'LMA', 'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
-relimp_leafn$Importance <- as.numeric(as.character(c(calc.relip.mm(leafNarea_lmer)$lmg[1:11], 
-                                                        sum(calc.relip.mm(leafNarea_lmer)$lmg[12:15]),
+relimp_leafn$Factor <- c('Soil N', 'Soil P', 'Soil K+µ', 'Temperature', 'PAR', 'LMA', 'χ',
+                         'N fixer', 'C3/C4', 'Soil Interactions', 'Unexplained')
+relimp_leafn$Importance <- as.numeric(as.character(c(calc.relip.mm(leafNarea_lmer)$lmg[1:9], 
+                                                        sum(calc.relip.mm(leafNarea_lmer)$lmg[10:13]),
                                                         1 - sum(calc.relip.mm(leafNarea_lmer)$lmg))))
-
-sum(calc.relip.mm(leafNarea_lmer)$lmg[c(1:3, 10:13)])
-sum(calc.relip.mm(leafNarea_lmer)$lmg[c(8:9)])
-sum(calc.relip.mm(leafNarea_lmer)$lmg[c(4:5)])
 
 relimp_leafn_df <- as.data.frame(relimp_leafn)
 
@@ -334,8 +319,8 @@ tm$x <- (tm$xmax + tm$xmin) / 2
 tm$y <- (tm$ymax + tm$ymin) / 2
 
 narea_tm <- full_join(relimp_leafn_df, tm, by = "Factor")
-narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'χ', 'italic(T)[g]', 'italic(I)[g]',
-                   'italic(D)[g]', 'Elevation', 'italic(M)[area]', 'N~fixer', 
+narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'italic(T)[g]', 'italic(I)[g]',
+                   'italic(M)[area]', 'χ', 'N~fixer', 
                    'C[3]/C[4]', 'Soil~Interactions', 'Unexplained')
 
 (narea_treemap <- ggplot(narea_tm, 
@@ -354,44 +339,41 @@ narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'χ', 'italic(T)[g]', 'ita
               aes(x = x, y = y), parse = T, size = 14) +
     geom_text(data = filter(narea_tm, Factor == 'χ'), 
               aes(x = x, y = y), parse = T, size = 10, family = 'Times') +
-    geom_text(data = filter(narea_tm, Factor == 'N fixer' | Factor == 'VPD' | Factor == 'C3/C4'), 
+    geom_text(data = filter(narea_tm, Factor == 'N fixer' | Factor == 'C3/C4'), 
               aes(x = x, y = y), parse = T, size = 7) +
-    geom_text(data = filter(narea_tm, Factor == 'Elevation' | Factor == 'Soil N'), 
-              aes(x = x, y = y), parse = T, size = 5) +
-    ggrepel::geom_text_repel(data = filter(narea_tm, x > 0.9), 
+    geom_text(data = filter(narea_tm, Factor == 'Unexplained' | Factor == 'Soil N'), 
+              aes(x = x, y = y), parse = T, size = 4) +
+    ggrepel::geom_text_repel(data = filter(narea_tm, Factor == 'Soil Interactions' | Factor == 'Soil P' |
+                                             Factor == 'Soil K+µ'), 
                              aes(x = x, y = y), parse = T, size = 4, 
-                             direction = "y", xlim = c(1.1, NA)) +
-    scale_x_continuous(limits = c(0, 1.3), expand = c(0, 0)) +
+                             direction = "y", xlim = c(1.01, NA)) +
+    scale_x_continuous(limits = c(0, 1.2), expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)))
 
-(narea_plot_treemap <- narea_plot + narea_treemap +
-  plot_annotation(tag_levels = 'A') & 
-  theme(plot.tag = element_text(size = 24)))
+# (narea_plot_treemap <- narea_plot + narea_treemap +
+#   plot_annotation(tag_levels = 'A') & 
+#   theme(plot.tag = element_text(size = 24)))
   
 ### table with model results
-Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'χ', 'Temperature', 
-                             'ln PAR', 'ln VPD', 'Elevation', 'ln LMA', 'N fixer', 'C3/C4',
+Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Temperature', 
+                             'ln PAR', 'ln LMA', 'χ', 'N fixer', 'C3/C4',
                              'Soil N x Soil P', 'Soil N x Soil K', 'Soil P x Soil K',
                              'Soil N x Soil P x Soil K'))
-Narea_model$df <- as.matrix(Anova(leafNarea_lmer))[1:15, 2]
+Narea_model$df <- as.matrix(Anova(leafNarea_lmer))[1:13, 2]
 Narea_model$Slope <- c(NA, NA, NA,
-                      summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 2],
-                      summary(emtrends(leafNarea_lmer, ~logvpd, var = "logvpd"))[1, 2],
-                      summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 2],
                       NA, NA, NA, NA, NA, NA)
 Narea_model$SE <- c(NA, NA, NA,
-                       summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 3],
-                       summary(emtrends(leafNarea_lmer, ~logvpd, var = "logvpd"))[1, 3],
-                       summary(emtrends(leafNarea_lmer, ~z, var = "z"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 3],
                        NA, NA, NA, NA, NA, NA)
-Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:15, 3]
-Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:15]
+Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:13, 3]
+Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:13]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
 write.csv(Narea_model, 'tables/Narea_model.csv')
@@ -505,6 +487,7 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
+    scale_x_continuous(limits = c(-1.5, 0.5)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['photo'])))
   
@@ -538,6 +521,7 @@ nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN
     geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
+    scale_x_continuous(limits = c(-6, 4)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['structure'])))
 
@@ -606,7 +590,6 @@ Narea_pred_model$RelImp <- Narea_pred_model$RelImp * 100
 
 write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
 
-
 #### soil N effects on AGB and LAI ####
 ### load data
 leaf_site <- read.csv('../Data/processed/traits_site.csv')
@@ -663,32 +646,6 @@ leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '1'] <- '-P,
 leaf_site$PKgroup[leaf_site$Ptrt_fac == '1' & leaf_site$Ktrt_fac == '1'] <- '+P, +K'
 
 ### make figures
-cld.emmGrid(emmeans(lai_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
-lai_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
-                          PKgroup = c('-P, -K', '-P, -K', '+P, -K', '+P, -K',
-                                       '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
-                          Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
-                          y = c(2.1, 2.1, 2.1, 2.1, 2.1, 2.1, 2.1, 2.1), 
-                          letter = c("a", "ab", "a", "ab", 
-                                     "a", "bc", "a", "c"))
-lai_letters$Ntrt_fac <- as.factor(lai_letters$Ntrt_fac)
-
-(lai_plot <- ggplot(data = leaf_site, 
-                  aes(x = PKgroup, y = log(lai_mean), fill = Ntrt_fac)) +
-  theme(legend.position = "none", 
-        axis.title.y = element_text(size = 30, colour = 'black'),
-        axis.title.x = element_text(size = 30, colour = 'black'),
-        axis.text.x = element_text(size = 20, colour = 'black'),
-        axis.text.y = element_text(size = 20, colour = 'black'),
-        panel.background = element_rect(fill = 'white', colour = 'black'),
-        panel.grid.major = element_line(colour = "white")) +
-    geom_boxplot(outlier.color = NA) +
-    # geom_dotplot(aes(fill = Ntrt_fac), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
-    scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
-    geom_text(data = lai_letters, aes(x = x, y = y, label = letter), size = 6) +
-    xlab('P x K treatment') +
-    ylab(expression('ln LAI (m' ^ '2' *' m' ^'-2' * ')')))
-
 cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 live_mass_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
                                 PKgroup = c('-P, -K', '-P, -K', '-P, +K', '-P, +K',
@@ -700,7 +657,7 @@ live_mass_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
 live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
 
 (live_mass_plot <- ggplot(data = leaf_site, 
-                  aes(x = PKgroup, y = log(live_mass_mean), fill = Ntrt_fac)) +
+                          aes(x = PKgroup, y = log(live_mass_mean), fill = Ntrt_fac)) +
     theme(legend.position = c(0, 0),
           legend.justification = c(0, 0),
           legend.title = element_text(size = 20),
@@ -713,17 +670,13 @@ live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "white")) +
     geom_boxplot(outlier.color = NA) +
-    # geom_dotplot(aes(fill = Ntrt_fac), binaxis = 'y', binwidth = 0.1, stackdir = 'center', alpha = 0.5) +
     scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
     geom_text(data = live_mass_letters, aes(x = x, y = y, label = letter), size = 6) +
+    scale_y_continuous(limits = c(3.5, 8)) +
+    scale_x_discrete(limits = c('-P, -K', '-P, +K', '+P, -K', '+P, +K')) +
     labs(fill = "Soil N") +
     xlab('P x K treatment') +
     ylab(expression('ln AGB (g)')))
-
-(plant_plot <- live_mass_plot / lai_plot +
-    plot_annotation(tag_levels = 'A') & 
-    theme(plot.tag = element_text(size = 24)))
-
 
 #### supply vs demand effects on leaf N ####
 ### calculate treatment type averages
@@ -922,21 +875,23 @@ ggsave("plots/hypothesis_plot.jpeg", plot = hypothesis_plot,
 
 ggsave("plots/tmp_plot.jpeg", plot = tmp_plot, 
        width = 29, height = 18, units = "cm")
-ggsave("plots/z_plot.jpeg", plot = z_plot, 
-       width = 29, height = 18, units = "cm")
 ggsave("plots/lma_plot.jpeg", plot = lma_plot, 
        width = 29, height = 18, units = "cm")
-ggsave("plots/narea_plot_treemap.jpeg", plot = narea_plot_treemap, 
-       width = 38, height = 18, units = "cm")
+ggsave("plots/narea_plot.jpeg", plot = narea_plot, 
+       width = 29, height = 18, units = "cm")
+ggsave("plots/narea_treemap.jpeg", plot = narea_treemap, 
+       width = 29, height = 18, units = "cm")
+# ggsave("plots/narea_plot_treemap.jpeg", plot = narea_plot_treemap, 
+#        width = 38, height = 18, units = "cm")
 
 ggsave("plots/npred_plot.jpeg", plot = npred_plot, 
        width = 29, height = 18, units = "cm")
 ggsave("plots/narea_pred_treemap.jpeg", plot = narea_pred_treemap, 
        width = 29, height = 18, units = "cm")
 
-ggsave("plots/plant_plot.jpeg", plot = plant_plot, 
-       width = 20, height = 25, units = "cm")
+ggsave("plots/live_mass_plot.jpeg", plot = live_mass_plot, 
+       width = 29, height = 18, units = "cm")
 
 ggsave("plots/delta_live_mass_plot.jpeg", plot = delta_live_mass_plot, 
-       width = 29, height = 18, units = "cm")
+       width = 29, height = 25, units = "cm")
 
