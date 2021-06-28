@@ -834,16 +834,16 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
           panel.grid.major = element_line(colour = "grey")) +
     geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
     scale_size_continuous(range = c(1, 5)) +
-    scale_fill_gradient(low = 'grey70', high = 'grey0') +
+    scale_fill_gradient(low = 'grey80', high = 'grey0') +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
-              size = 7, colour = 'grey70', alpha = 1, lty = 2) +
+              size = 7, colour = 'grey60', alpha = 1, lty = 2) +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
-              size = 7, colour = 'grey35', alpha = 1, lty = 2) +
+              size = 7, colour = 'grey40', alpha = 1, lty = 2) +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
-              size = 7, colour = 'grey0', alpha = 1, lty = 1) +
+              size = 7, colour = 'grey20', alpha = 1, lty = 1) +
     labs(fill = expression('∆' * italic('M')['area'] * ' (%)')) +
     guides(size = "none") +
     ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
