@@ -299,6 +299,7 @@ leafNarea_letters$Ntrt_fac <- as.factor(leafNarea_letters$Ntrt_fac)
     geom_boxplot(outlier.color = NA) +
     geom_text(data = leafNarea_letters, aes(x = x, y = y, label = letter), size = 6) +
     scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
+    # geom_jitter(size = 0.1) +
     labs(fill = "Soil N") +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab('P x K treatment'))
@@ -504,9 +505,10 @@ nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN
                               aes(x = lognstructure, y = log(narea), color = Ntrt_fac)) +
     theme(legend.position = c(0, 1),
           legend.justification = c(0, 1),
-          legend.title = element_text(size = 20),
-          legend.text = element_text(size = 15),
+          legend.title = element_text(size = 22),
+          legend.text = element_text(size = 20),
           legend.background = element_rect(fill = 'white', colour = 'black'),
+          legend.key=element_blank(),
           axis.title.y = element_text(size = 30, colour = 'black'),
           axis.title.x = element_text(size = 30, colour = 'black'),
           axis.text.x = element_text(size = 20, colour = 'black'),
@@ -821,8 +823,8 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
                                 aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
     theme(legend.position = c(1, 1),
           legend.justification = c(1, 1),
-          legend.title = element_text(size = 20),
-          legend.text = element_text(size = 15),
+          legend.title = element_text(size = 28),
+          legend.text = element_text(size = 20),
           legend.background = element_rect(fill = 'white', colour = 'black'),
           axis.title.y = element_text(size = 30, colour = 'black'),
           axis.title.x = element_text(size = 30, colour = 'black'),
@@ -831,18 +833,18 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
     geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
-    scale_size_continuous(range = c(1, 3)) +
-    scale_fill_gradient(low = 'blue', high = 'red') +
+    scale_size_continuous(range = c(1, 5)) +
+    scale_fill_gradient(low = 'grey70', high = 'grey0') +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
-              size = 3, colour = 'blue', alpha = 1, lty = 2) +
+              size = 7, colour = 'grey70', alpha = 1, lty = 2) +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
-              size = 3, colour = 'purple', alpha = 1, lty = 2) +
+              size = 7, colour = 'grey35', alpha = 1, lty = 2) +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
-              size = 3, colour = 'red', alpha = 1, lty = 1) +
-    labs(fill = expression('∆' * italic('M')['area'])) +
+              size = 7, colour = 'grey0', alpha = 1, lty = 1) +
+    labs(fill = expression('∆' * italic('M')['area'] * ' (%)')) +
     guides(size = "none") +
     ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
     xlab(expression('∆' *'AGB' * ' (%)')))
