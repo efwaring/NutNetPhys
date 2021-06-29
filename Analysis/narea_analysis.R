@@ -143,7 +143,7 @@ hypothesis_data$Narea <- as.numeric(as.character(hypothesis_data$Narea))
 
 #### soil N effects on leaf traits (Narea and chi) ####
 ### load data
-leaf <- read.csv('../Data/processed/traits.csv')
+leaf <- read.csv('../Data/processed/traits_v2.csv')
 
 ## turn treatment numbers into factors
 leaf$Ntrt_fac <- as.factor(leaf$Ntrt)
