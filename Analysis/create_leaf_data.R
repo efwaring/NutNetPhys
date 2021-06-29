@@ -17,7 +17,13 @@ library(ggplot2)
 # read in and modify foliar trait dataset (Jen Firn)
 #########################################
 
-leaf = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')
+leaf_old = read.csv('../Data/NutNet-foliar-traits-7JAN2017.csv')
+leaf_new = read.csv('../Data/foliar_cover_updated_2.csv')
+colnames(leaf_new)
+colnames(leaf_old)
+leaf_new_sla = leaf_new[, c(1:5, 13)]
+
+leaf = left_join(leaf_old, leaf_new_sla)
 
 leaf[leaf == 'NULL'] <- NA
 
@@ -162,4 +168,4 @@ for (i in 1:length(code_taxon_data)){
 
 leaf_core_spei_info = cbind(leaf_core_spei, n_info)
 
-# write.csv(leaf_core_spei_info, "../Data/leaf_plus.csv")
+# write.csv(leaf_core_spei_info, "../Data/leaf_plus_v2.csv")

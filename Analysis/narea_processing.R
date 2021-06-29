@@ -16,7 +16,7 @@ library(ggplot2)
 # read in and modify foliar trait dataset (Jen Firn)
 #########################################
 ## load observational data
-traits = read.csv('../Data/leaf_plus.csv')
+traits = read.csv('../Data/leaf_plus_v2.csv')
 head(traits)
 
 ## fiter by overlapping sites
@@ -40,9 +40,9 @@ traits$photosynthetic_pathway[traits$photosynthetic_pathway == 'NULL'] <- 'C3'
 
 
 ## calculate lma (in g m-2) and narea
-hist(traits$leaf_area_mm2)
-traits$la_m2 = traits$leaf_area_mm2 * (1/1000000)
-traits$lma = traits$leaf_dry_mass_g / traits$la_m2
+# hist(traits$leaf_area_mm2)
+traits$sla_m2_g = traits$SLA_v2 * (1/1000000)
+traits$lma = 1/traits$sla_m2_g
 traits$narea = (traits$leaf_pct_N / 100) * (traits$lma)
 # hist(traits$lma) # some extremely high values
 # hist(traits$narea) # some extremely high values
@@ -77,7 +77,7 @@ traits$chi[traits$chi < 0] = 0
 # traits = subset(traits, chi > 0.2 & chi < 0.95)
 
 traits_group_by_site_for_count = group_by(traits, site_code)
-traits_site_count = summarise(traits_group_by_site_for_count, n = n())
+traits_site_count = summarize(traits_group_by_site_for_count, n = n())
 subset(traits_site_count, n <=30)
 
 # subset(traits, site_code == 'bldr.us')
@@ -107,6 +107,7 @@ biomass_nutrients$pct_Ca = as.numeric(as.character(biomass_nutrients$pct_Ca))
 
 biomass_nutrients_live = subset(biomass_nutrients, live == 1)
 
+detach(package:plyr)
 biomass_nutrients_live_group = group_by(biomass_nutrients_live,
                                         site_code, year, plot)
 biomass_nutrients_live_mean = summarise(biomass_nutrients_live_group,
@@ -120,7 +121,7 @@ biomass_nutrients_live_mean = summarise(biomass_nutrients_live_group,
 traits_w_cover_w_biomass_nut = left_join(traits_w_cover, biomass_nutrients_live_mean)
 traits_w_cover_w_biomass_nut$spp_mass_N = traits_w_cover_w_biomass_nut$spp_live_mass * (traits_w_cover_w_biomass_nut$pct_N_mean/100)
 
-# write.csv(traits_w_cover_w_biomass_nut, '../Data/processed/traits.csv')
+# write.csv(traits_w_cover_w_biomass_nut, '../Data/processed/traits_v2.csv')
 
 traits_group_by_site = group_by(traits, 
                                     site_code, plot, block, trt, Ntrt, Ptrt, Ktrt)
@@ -137,4 +138,4 @@ traits_site = summarise(traits_group_by_site,
                             p_pet_mean = mean(p_pet, na.rm = T),
                             live_mass_mean = mean(live_mass, na.rm = T))
 
-# write.csv(traits_site, '../Data/processed/traits_site.csv')
+# write.csv(traits_site, '../Data/processed/traits_site_v2.csv')
