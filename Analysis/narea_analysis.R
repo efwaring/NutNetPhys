@@ -378,7 +378,7 @@ Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:13, 3]
 Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:13]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
-write.csv(Narea_model, 'tables/Narea_model.csv')
+# write.csv(Narea_model, 'tables/Narea_model.csv')
 
 
 #### Narea predictions ####
@@ -591,7 +591,7 @@ Narea_pred_model$p <- as.matrix(Anova(npred_soil_lmer))[1:11, 3]
 Narea_pred_model$RelImp <- as.matrix(calc.relip.mm(npred_soil_lmer)$lmg)[1:11]
 Narea_pred_model$RelImp <- Narea_pred_model$RelImp * 100
 
-write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
+# write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
 
 #### soil N effects on AGB and LAI ####
 ### load data
@@ -617,7 +617,7 @@ lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil 
 lai_model$chisq <- as.matrix(Anova(lai_lmer)[1:7, 1])
 lai_model$df <- as.matrix(Anova(lai_lmer)[1:7, 2])
 lai_model$p <- as.matrix(Anova(lai_lmer)[1:7, 3])
-write.csv(lai_model, 'tables/lai_model.csv')
+# write.csv(lai_model, 'tables/lai_model.csv')
 
 ### linear mixed effects model for mean live mass
 live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
@@ -640,7 +640,7 @@ live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x
 live_mass_model$chisq <- as.matrix(Anova(live_mass_lmer)[1:7, 1])
 live_mass_model$df <- as.matrix(Anova(live_mass_lmer)[1:7, 2])
 live_mass_model$p <- as.matrix(Anova(live_mass_lmer)[1:7, 3])
-write.csv(live_mass_model, 'tables/live_mass_model.csv')
+# write.csv(live_mass_model, 'tables/live_mass_model.csv')
 
 ### assign treatment group labels
 leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '0'] <- '-P, -K'
@@ -738,14 +738,14 @@ delta_chi_mad <- mad(leaf_site_trt$delta_chi, na.rm = T)
 #                           delta_chi > 3 * -delta_chi_mad)
 
 delta_live_mass_data <- subset(leaf_site_trt, 
-                               delta_narea < 1 * delta_narea_mad & 
-                                 delta_narea > 1 * -delta_narea_mad &
-                                 delta_lma < 1 * delta_lma_mad &
-                                 delta_lma > 1 * -delta_lma_mad &
-                                 delta_live_mass < 1 * delta_live_mass_mad & 
-                                 delta_live_mass > 1 * -delta_live_mass_mad &
-                                 delta_chi < 1 * delta_chi_mad &
-                                 delta_chi > 1 * -delta_chi_mad)
+                               delta_narea < 3 * delta_narea_mad & 
+                                 delta_narea > 3 * -delta_narea_mad &
+                                 delta_lma < 3 * delta_lma_mad &
+                                 delta_lma > 3 * -delta_lma_mad &
+                                 delta_live_mass < 3 * delta_live_mass_mad & 
+                                 delta_live_mass > 3 * -delta_live_mass_mad &
+                                 delta_chi < 3 * delta_chi_mad &
+                                 delta_chi > 3 * -delta_chi_mad)
 
 # delta_N_mass_data <- subset(leaf_site_trt, 
 #                             delta_narea < 3 * delta_narea_mad & 
@@ -770,6 +770,29 @@ summary(delta_live_mass_lm) # N = 310
 Anova(delta_live_mass_lm)
 
 emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass')
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                 at = list(delta_lma = -25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = -25, delta_chi = 25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 0, delta_chi = 25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 25, delta_chi = 25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = -25, delta_chi = 0)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 0, delta_chi = 0)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 25, delta_chi = 0)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = -25, delta_chi = -25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 0, delta_chi = -25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 25, delta_chi = -25)))
+
 emmeans(delta_live_mass_lm, ~Ptrt_fac)
 
 delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3/C4', 
@@ -779,7 +802,7 @@ delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3
 delta_live_mass_model$chisq <- as.matrix(Anova(delta_live_mass_lm)[1:12, 1])
 delta_live_mass_model$df <- as.matrix(Anova(delta_live_mass_lm)[1:12, 2])
 delta_live_mass_model$p <- as.matrix(Anova(delta_live_mass_lm)[1:12, 3])
-write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
+# write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
 
 ### make figures
 ## dataset
