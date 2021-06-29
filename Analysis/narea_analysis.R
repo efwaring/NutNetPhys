@@ -187,6 +187,7 @@ summary(leafNarea_lmer) # N = 1,812
 Anova(leafNarea_lmer)
 
 pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
+cld(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
 
 ### get some stats
 #### soil nitrogen effect
@@ -726,35 +727,35 @@ delta_N_mass_mad <- mad(leaf_site_trt$delta_N_mass, na.rm = T)
 delta_chi_mad <- mad(leaf_site_trt$delta_chi, na.rm = T)
 
 ## remove instances where any ∆ values are 3 times higher than the MAD
-delta_lai_data <- subset(leaf_site_trt, 
-                         delta_narea < 3 * delta_narea_mad & 
-                          delta_narea > 3 * -delta_narea_mad & 
-                          delta_lma < 3 * delta_lma_mad &
-                          delta_lma > 3 * -delta_lma_mad &
-                          delta_lai < 3 * delta_lai_mad & 
-                          delta_lai > 3 * -delta_lai_mad &
-                          delta_chi < 3 * delta_chi_mad & 
-                          delta_chi > 3 * -delta_chi_mad)
+# delta_lai_data <- subset(leaf_site_trt, 
+#                          delta_narea < 3 * delta_narea_mad & 
+#                           delta_narea > 3 * -delta_narea_mad & 
+#                           delta_lma < 3 * delta_lma_mad &
+#                           delta_lma > 3 * -delta_lma_mad &
+#                           delta_lai < 3 * delta_lai_mad & 
+#                           delta_lai > 3 * -delta_lai_mad &
+#                           delta_chi < 3 * delta_chi_mad & 
+#                           delta_chi > 3 * -delta_chi_mad)
 
 delta_live_mass_data <- subset(leaf_site_trt, 
-                               delta_narea < 3 * delta_narea_mad & 
-                                 delta_narea > 3 * -delta_narea_mad &
-                                 delta_lma < 3 * delta_lma_mad &
-                                 delta_lma > 3 * -delta_lma_mad &
-                                 delta_live_mass < 3 * delta_live_mass_mad & 
-                                 delta_live_mass > 3 * -delta_live_mass_mad &
-                                 delta_chi < 3 * delta_chi_mad &
-                                 delta_chi > 3 * -delta_chi_mad)
+                               delta_narea < 1 * delta_narea_mad & 
+                                 delta_narea > 1 * -delta_narea_mad &
+                                 delta_lma < 1 * delta_lma_mad &
+                                 delta_lma > 1 * -delta_lma_mad &
+                                 delta_live_mass < 1 * delta_live_mass_mad & 
+                                 delta_live_mass > 1 * -delta_live_mass_mad &
+                                 delta_chi < 1 * delta_chi_mad &
+                                 delta_chi > 1 * -delta_chi_mad)
 
-delta_N_mass_data <- subset(leaf_site_trt, 
-                            delta_narea < 3 * delta_narea_mad & 
-                              delta_narea > 3 * -delta_narea_mad &
-                              delta_lma < 3 * delta_lma_mad &
-                              delta_lma > 3 * -delta_lma_mad &
-                              delta_N_mass < 3 * delta_N_mass_mad & 
-                              delta_N_mass > 3 * -delta_N_mass_mad &
-                              delta_chi < 3 * delta_chi_mad &
-                              delta_chi > 3 * -delta_chi_mad)
+# delta_N_mass_data <- subset(leaf_site_trt, 
+#                             delta_narea < 3 * delta_narea_mad & 
+#                               delta_narea > 3 * -delta_narea_mad &
+#                               delta_lma < 3 * delta_lma_mad &
+#                               delta_lma > 3 * -delta_lma_mad &
+#                               delta_N_mass < 3 * delta_N_mass_mad & 
+#                               delta_N_mass > 3 * -delta_N_mass_mad &
+#                               delta_chi < 3 * delta_chi_mad &
+#                               delta_chi > 3 * -delta_chi_mad)
 
 ### linear mixed effects model for delta Narea by delta live mass
 delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass + 
@@ -768,6 +769,7 @@ delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass +
 summary(delta_live_mass_lm) # N = 310
 Anova(delta_live_mass_lm)
 
+emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass')
 emmeans(delta_live_mass_lm, ~Ptrt_fac)
 
 delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3/C4', 
@@ -784,43 +786,57 @@ write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
 delta_live_mass_plot_data <- delta_live_mass_data
 
 ## trendline information
-delta_live_mass_plot_intercept_lowlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
-                                              at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2]
-delta_live_mass_plot_slope_lowlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-                                           at = list(delta_lma = -25)))[1, 2]
-delta_live_mass_plot_intercept_midlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
-                                              at = list(delta_live_mass = 0, delta_lma = 0)))[1, 2]
-delta_live_mass_plot_slope_midlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-                                           at = list(delta_lma = 0)))[1, 2]
-delta_live_mass_plot_intercept_highlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
-                                              at = list(delta_live_mass = 0, delta_lma = 25)))[1, 2]
-delta_live_mass_plot_slope_highlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-                                           at = list(delta_lma = 25)))[1, 2]
+# delta_live_mass_plot_intercept_lowlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+#                                               at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2]
+# delta_live_mass_plot_slope_lowlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+#                                            at = list(delta_lma = -25)))[1, 2]
+# delta_live_mass_plot_intercept_midlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+#                                               at = list(delta_live_mass = 0, delta_lma = 0)))[1, 2]
+# delta_live_mass_plot_slope_midlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+#                                            at = list(delta_lma = 0)))[1, 2]
+# delta_live_mass_plot_intercept_highlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+#                                               at = list(delta_live_mass = 0, delta_lma = 25)))[1, 2]
+# delta_live_mass_plot_slope_highlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+#                                            at = list(delta_lma = 25)))[1, 2]
 
-delta_live_mass_plot_trend_lowlma <- delta_live_mass_plot_slope_lowlma * 
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  delta_live_mass_plot_intercept_lowlma
+delta_live_mass_plot_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                         at = list(delta_live_mass = 0)))[1, 2]
+delta_live_mass_plot_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass'))[1, 2]
 
-delta_live_mass_plot_trend_midlma <- delta_live_mass_plot_slope_midlma * 
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  delta_live_mass_plot_intercept_midlma
+# delta_live_mass_plot_trend_lowlma <- delta_live_mass_plot_slope_lowlma * 
+#   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+#   delta_live_mass_plot_intercept_lowlma
+# 
+# delta_live_mass_plot_trend_midlma <- delta_live_mass_plot_slope_midlma * 
+#   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+#   delta_live_mass_plot_intercept_midlma
+# 
+# delta_live_mass_plot_trend_highlma <- delta_live_mass_plot_slope_highlma * 
+#   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
+#   delta_live_mass_plot_intercept_highlma
 
-delta_live_mass_plot_trend_highlma <- delta_live_mass_plot_slope_highlma * 
+delta_live_mass_plot_trend <- delta_live_mass_plot_slope * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  delta_live_mass_plot_intercept_highlma
+  delta_live_mass_plot_intercept
+
+# delta_live_mass_plot_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), 
+#                                                max(delta_live_mass_plot_data$delta_live_mass), 1),
+#                                     delta_live_mass_plot_trend_lowlma, 
+#                                     delta_live_mass_plot_trend_midlma, 
+#                                     delta_live_mass_plot_trend_highlma)
+# colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass', 
+#                                             'delta_narea_lowlma', 
+#                                             'delta_narea_midlma', 
+#                                             'delta_narea_highlma')
 
 delta_live_mass_plot_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), 
-                                               max(delta_live_mass_plot_data$delta_live_mass), 1),
-                                    delta_live_mass_plot_trend_lowlma, 
-                                    delta_live_mass_plot_trend_midlma, 
-                                    delta_live_mass_plot_trend_highlma)
+                                                max(delta_live_mass_plot_data$delta_live_mass), 1),
+                                            delta_live_mass_plot_trend)
 colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass', 
-                                            'delta_narea_lowlma', 
-                                            'delta_narea_midlma', 
-                                            'delta_narea_highlma')
+                                             'delta_narea')
 
 (delta_live_mass_plot <- ggplot(data = delta_live_mass_plot_data, 
-                                aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
+                                aes(x = delta_live_mass, y = delta_narea)) +
     theme(legend.position = c(1, 1),
           legend.justification = c(1, 1),
           legend.title = element_text(size = 28),
@@ -832,18 +848,21 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
           axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
-    geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
-    scale_size_continuous(range = c(1, 5)) +
-    scale_fill_gradient(low = 'grey80', high = 'grey0') +
+    geom_point(shape = 21, colour = 'black', fill = 'grey', stroke = 0.5, size = 3) +
+    # scale_size_continuous(range = c(1, 5)) +
+    # scale_fill_gradient(low = 'grey80', high = 'grey0') +
     geom_line(data = delta_live_mass_plot_trend_df, 
-              aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
-              size = 7, colour = 'grey60', alpha = 1, lty = 2) +
-    geom_line(data = delta_live_mass_plot_trend_df, 
-              aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
-              size = 7, colour = 'grey40', alpha = 1, lty = 2) +
-    geom_line(data = delta_live_mass_plot_trend_df, 
-              aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
-              size = 7, colour = 'grey20', alpha = 1, lty = 1) +
+              aes(x = delta_live_mass, y = delta_narea, fill = NULL), 
+              size = 7, colour = 'black', alpha = 1, lty = 1) +
+    # geom_line(data = delta_live_mass_plot_trend_df, 
+    #           aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
+    #           size = 7, colour = 'grey60', alpha = 1, lty = 2) +
+    # geom_line(data = delta_live_mass_plot_trend_df, 
+    #           aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
+    #           size = 7, colour = 'grey40', alpha = 1, lty = 2) +
+    # geom_line(data = delta_live_mass_plot_trend_df, 
+    #           aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
+    #           size = 7, colour = 'grey20', alpha = 1, lty = 1) +
     labs(fill = expression('∆' * italic('M')['area'] * ' (%)')) +
     guides(size = "none") +
     ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
