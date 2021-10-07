@@ -12,6 +12,7 @@ library(treemapify)
 library(emmeans)
 library(relaimpo)
 library(patchwork)
+library(multcomp)
 
 #### load functions ####
 ### functions to calculate vcmax and jmax for C3 plants 
@@ -461,6 +462,7 @@ npred_soil_lmer <- lmer(log(narea) ~ lognphoto + lognstructure +
 # plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
 summary(npred_soil_lmer) # N = 1,812
 Anova(npred_soil_lmer)
+cld(emmeans(npred_soil_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
 ### make figures
 ## find slope and intercept from mixed effects model
