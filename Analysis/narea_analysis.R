@@ -120,7 +120,7 @@ leaf$fence <- 'no'
 leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 
 ## create subset of data where chi is greater than 0.2 and less than 0.95
-leaf_chi_subset = subset(leaf, chi > 0.2 & chi < 0.95) # lose 700 points
+leaf_chi_subset = subset(leaf, chi > 0 & chi < 1) # lose 700 points
 
 ### linear mixed effects model
 leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
@@ -290,13 +290,15 @@ narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'italic(T)[g]', 'italic(I)
           axis.text = element_text(colour = 'white'),
           axis.ticks = element_line(colour = "white")) + 
     scale_fill_gradient(low = "lightcyan", high = "lightcyan4") +
-    geom_text(data = filter(narea_tm, Factor == 'LMA' | Factor == 'PAR' | Factor == 'Temperature'), 
+    geom_text(data = filter(narea_tm, Factor == 'LMA' | Factor == 'PAR'), 
               aes(x = x, y = y), parse = T, size = 14) +
+    # geom_text(data = filter(narea_tm, ), 
+    #           aes(x = x, y = y), parse = T, size = 8) +
     geom_text(data = filter(narea_tm, Factor == 'χ'), 
               aes(x = x, y = y), parse = T, size = 10, family = 'Times') +
-    geom_text(data = filter(narea_tm, Factor == 'N fixer' | Factor == 'C3/C4'), 
+    geom_text(data = filter(narea_tm, Factor == 'Unexplained' | Factor == 'Temperature' | Factor == 'N fixer' | Factor == 'C3/C4'), 
               aes(x = x, y = y), parse = T, size = 7) +
-    geom_text(data = filter(narea_tm, Factor == 'Unexplained' | Factor == 'Soil N'), 
+    geom_text(data = filter(narea_tm, Factor == 'Soil N'), 
               aes(x = x, y = y), parse = T, size = 4) +
     ggrepel::geom_text_repel(data = filter(narea_tm, Factor == 'Soil Interactions' | Factor == 'Soil P' |
                                              Factor == 'Soil K+µ'), 
@@ -365,9 +367,6 @@ npred_c3$model_lma <- gas_exchange_pred_c3$lma
 npred_c4 <- bind_cols(leaf_chi_subset_c4, gas_exchange_pred_c4[ ,38:50])
 npred_c4$model_lma <- gas_exchange_pred_c4$lma
 
-ggplot(npred_c3, aes(lma, model_lma)) + geom_point()
-ggplot(npred_c4, aes(lma, model_lma)) + geom_point()
-
 # combine C3 and C4 subsets
 leaf_chi_subset_npred <- bind_rows(npred_c3, npred_c4)
 
@@ -415,7 +414,7 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-0.5, 0.75)) +
+    scale_x_continuous(limits = c(-1.5, 0.5)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['photo'])))
   
@@ -453,7 +452,7 @@ nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN
     geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-6, 4)) +
+    scale_x_continuous(limits = c(-5, 3)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['structure'])))
 
@@ -482,8 +481,8 @@ narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'S
                         'N~fixer', 'C[3]/C[4]', 'Soil~Interactions', 'Unexplained')
 
 (narea_pred_treemap <- ggplot(narea_tm_pred, 
-                         aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
-                             label = name)) +
+                              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, 
+                                  label = name)) +
     geom_rect(aes(fill = Importance), color = "black") +
     theme(legend.title = element_text(size = 20),
           legend.text = element_text(size = 15),
@@ -493,16 +492,15 @@ narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'S
           axis.text = element_text(colour = 'white'),
           axis.ticks = element_line(colour = "white")) + 
     scale_fill_gradient(low = "lightcyan", high = "lightcyan4") +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Unexplained'),
+    geom_text(data = filter(narea_tm_pred, Factor == 'Unexplained' | Factor == 'N structure' | Factor == 'N photo'),
               aes(x = x, y = y), parse = T, size = 14) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Soil K+µ' | Factor == 'C3/C4' | Factor == "N fixer"),
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil P' | Factor == 'Soil K+µ'),
               aes(x = x, y = y), parse = T, size = 10) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'N structure' | Factor == 'Soil N' | 
-                              Factor == 'Soil Interactions' | Factor == 'N photo'),
+    geom_text(data = filter(narea_tm_pred, Factor == 'N fixer' | Factor == 'C3/C4'),
               aes(x = x, y = y), parse = T, size = 8) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Soil P'),
-              aes(x = x, y = y), parse = T, size = 4) +
-    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions' | Factor == 'Soil N'),
+              aes(x = x, y = y), parse = T, size = 5) +
+    scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)))
 
 ### table with model results
