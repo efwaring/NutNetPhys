@@ -66,9 +66,8 @@ calc_optimal_vcmax <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400,
 	omega_star <- (1 + (omega) - sqrt((1 + (omega))^2 - (4 * theta * omega)))
 	
 	# calculate q0 using Bernacchi et al. (2003) temperature response (set to 0.257 at 25C)
-	# q0 = -0.0805 + (0.022 * tg_c) - (0.00034 * tg_c * tg_c)
-	q0 = 0.25 # Bernacchi only goes down to 10C and these are much colder >> probably shouldn't use!
-	
+	q0 = -0.0805 + (0.022 * tg_c) - (0.00034 * tg_c * tg_c)
+
 	# calculate vcmax and jmax	
 	vcmax <- ((q0 * par * m) / mc) * (omega_star / (8 * theta))	          
 	jvrat <- ((8 * theta * mc * omega) / (m * omega_star))     

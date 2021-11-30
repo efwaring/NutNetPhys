@@ -119,8 +119,8 @@ leaf$grass[leaf$pft == 'GRASS'] <- 'yes'
 leaf$fence <- 'no'
 leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 
-## create subset of data where chi is greater than 0.2 and less than 0.95
-leaf_chi_subset = subset(leaf, chi > 0 & chi < 1) # lose 700 points
+## create subset of data where chi is greater than 0 and less than 1
+leaf_chi_subset = subset(leaf, chi > 0 & chi < 1) # lose 659 points
 
 ### linear mixed effects model
 leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
@@ -333,7 +333,7 @@ Narea_model$p <- as.matrix(Anova(leafNarea_lmer))[1:13, 3]
 Narea_model$RelImp <- as.matrix(calc.relip.mm(leafNarea_lmer)$lmg)[1:13]
 Narea_model$RelImp <- Narea_model$RelImp * 100
 
-# write.csv(Narea_model, 'tables/Narea_model.csv')
+write.csv(Narea_model, 'tables/Narea_model.csv')
 
 
 #### Narea predictions ####
@@ -345,6 +345,7 @@ gas_exchange_pred_c3 <- calc_optimal_vcmax(pathway = "C3",
                                            cao = 400, 
                                            vpdo = leaf_chi_subset_c3$vpd, 
                                            z = leaf_chi_subset_c3$z,
+                                           q0_resp = "no",
                                            chi = leaf_chi_subset_c3$chi,
                                            lma = leaf_chi_subset_c3$lma)
 
@@ -356,15 +357,16 @@ gas_exchange_pred_c4 <- calc_optimal_vcmax(pathway = "C4",
                                            cao = 400, 
                                            vpdo = leaf_chi_subset_c4$vpd, 
                                            z = leaf_chi_subset_c4$z,
+                                           q0_resp = "no",
                                            chi = leaf_chi_subset_c4$chi,
                                            lma = leaf_chi_subset_c4$lma)
 
 ## add C3 model results to leaf dataset
-npred_c3 <- bind_cols(leaf_chi_subset_c3, gas_exchange_pred_c3[ ,38:50])
+npred_c3 <- bind_cols(leaf_chi_subset_c3, gas_exchange_pred_c3[ ,39:51])
 npred_c3$model_lma <- gas_exchange_pred_c3$lma
 
 ## add C4 model results to leaf dataset
-npred_c4 <- bind_cols(leaf_chi_subset_c4, gas_exchange_pred_c4[ ,38:50])
+npred_c4 <- bind_cols(leaf_chi_subset_c4, gas_exchange_pred_c4[ ,39:51])
 npred_c4$model_lma <- gas_exchange_pred_c4$lma
 
 # combine C3 and C4 subsets
@@ -414,7 +416,7 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-1.5, 0.5)) +
+    scale_x_continuous(limits = c(-1.1, 0.75)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['photo'])))
   
@@ -492,15 +494,19 @@ narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'S
           axis.text = element_text(colour = 'white'),
           axis.ticks = element_line(colour = "white")) + 
     scale_fill_gradient(low = "lightcyan", high = "lightcyan4") +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Unexplained' | Factor == 'N structure' | Factor == 'N photo'),
+    geom_text(data = filter(narea_tm_pred, Factor == 'Unexplained'),
               aes(x = x, y = y), parse = T, size = 14) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Soil P' | Factor == 'Soil K+µ'),
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil K+µ' | Factor == 'C3/C4' | Factor == 'N fixer'),
               aes(x = x, y = y), parse = T, size = 10) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'N fixer' | Factor == 'C3/C4'),
+    geom_text(data = filter(narea_tm_pred, Factor == 'N structure' | Factor == 'N photo' | 
+                              Factor == 'Soil N'),
               aes(x = x, y = y), parse = T, size = 8) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions' | Factor == 'Soil N'),
-              aes(x = x, y = y), parse = T, size = 5) +
-    scale_x_continuous(expand = c(0, 0)) +
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions'),
+              aes(x = x, y = y), parse = T, size = 7) +
+    ggrepel::geom_text_repel(data = filter(narea_tm_pred, Factor == 'Soil P'), 
+                             aes(x = x, y = y), parse = T, size = 4, 
+                             direction = "y", xlim = c(1.01, NA)) +
+    scale_x_continuous(limits = c(0, 1.1), expand = c(0, 0)) +
     scale_y_continuous(expand = c(0, 0)))
 
 ### table with model results
@@ -519,7 +525,7 @@ Narea_pred_model$p <- as.matrix(Anova(npred_soil_lmer))[1:11, 3]
 Narea_pred_model$RelImp <- as.matrix(calc.relip.mm(npred_soil_lmer)$lmg)[1:11]
 Narea_pred_model$RelImp <- Narea_pred_model$RelImp * 100
 
-# write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
+write.csv(Narea_pred_model, 'tables/Narea_pred_model.csv')
 
 #### soil N effects on AGB and LAI ####
 ### load data
@@ -545,7 +551,7 @@ lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil 
 lai_model$chisq <- as.matrix(Anova(lai_lmer)[1:7, 1])
 lai_model$df <- as.matrix(Anova(lai_lmer)[1:7, 2])
 lai_model$p <- as.matrix(Anova(lai_lmer)[1:7, 3])
-# write.csv(lai_model, 'tables/lai_model.csv')
+write.csv(lai_model, 'tables/lai_model.csv')
 
 ### linear mixed effects model for mean live mass
 live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
@@ -568,7 +574,7 @@ live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x
 live_mass_model$chisq <- as.matrix(Anova(live_mass_lmer)[1:7, 1])
 live_mass_model$df <- as.matrix(Anova(live_mass_lmer)[1:7, 2])
 live_mass_model$p <- as.matrix(Anova(live_mass_lmer)[1:7, 3])
-# write.csv(live_mass_model, 'tables/live_mass_model.csv')
+write.csv(live_mass_model, 'tables/live_mass_model.csv')
 
 ### assign treatment group labels
 leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '0'] <- '-P, -K'
@@ -732,7 +738,7 @@ delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3
 delta_live_mass_model$chisq <- as.matrix(Anova(delta_live_mass_lm)[1:12, 1])
 delta_live_mass_model$df <- as.matrix(Anova(delta_live_mass_lm)[1:12, 2])
 delta_live_mass_model$p <- as.matrix(Anova(delta_live_mass_lm)[1:12, 3])
-# write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
+write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
 
 ### make figures
 ## dataset
@@ -984,7 +990,7 @@ ggsave("plots/npred_plot.jpeg", plot = npred_plot,
 ggsave("plots/narea_pred_treemap.jpeg", plot = narea_pred_treemap, 
        width = 29, height = 18, units = "cm")
 
-ggsave("plots/live_mass_plot.jpeg", plot = live_mass_plot, 
+ ggsave("plots/live_mass_plot.jpeg", plot = live_mass_plot, 
        width = 29, height = 18, units = "cm")
 
 ggsave("plots/delta_live_mass_plot.jpeg", plot = delta_live_mass_plot, 

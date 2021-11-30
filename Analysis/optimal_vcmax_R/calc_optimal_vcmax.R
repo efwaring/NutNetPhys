@@ -64,7 +64,7 @@ library(R.utils)
 sourceDirectory('functions', modifiedOnly = FALSE)
 
 calc_optimal_vcmax <- function(pathway = "C3", tg_c = 25, z = 0, vpdo = 1, cao = 400, oao = 209460,
-                               paro = 800, theta = 0.85, chi = NA, q0 = 0.257, q0_resp = "yes", 
+                               paro = 800, beta = 146, theta = 0.85, chi = NA, q0 = 0.257, q0_resp = "yes", 
                                q0_int = -0.0805, lma = NA, f = 0.5){
   
   # constants
@@ -91,7 +91,7 @@ calc_optimal_vcmax <- function(pathway = "C3", tg_c = 25, z = 0, vpdo = 1, cao =
     # fill in missing chi values if chi is known
     # chi_known <- ifelse(!is.na(chi), chi, calc_chi(temp = tg_c, z = z, vpdo = vpdo, cao = cao))
     # calculate chi if unknown
-    chi <- return_chi(given_chi = given_chi, chi = chi, temp = tg_c, z = z, vpdo = vpdo, cao = cao)
+    chi <- return_chi(given_chi = given_chi, chi = chi, temp = tg_c, z = z, vpdo = vpdo, cao = cao, beta = beta)
     ci <- chi * ca # Pa
     mc <- ((ci - gammastar) / (ci + km))
     m <- ((ci - gammastar)/(ci + (2 * gammastar)))
@@ -222,6 +222,7 @@ calc_optimal_vcmax <- function(pathway = "C3", tg_c = 25, z = 0, vpdo = 1, cao =
                         "q0_response" = q0_resp,
                         "q0_intercept" = q0_int,
 	                      "q0" = q0,
+                        "beta" = beta,
 	                      "theta" = theta,
                         "lma" = lma,
                         "given_lma" = given_lma,

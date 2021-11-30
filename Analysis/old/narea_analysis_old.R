@@ -18,7 +18,7 @@ library(multcomp)
 ### functions to calculate vcmax and jmax for C3 plants 
 source('optimal_vcmax_R_old/calc_optimal_vcmax.R')
 source('optimal_vcmax_R_old/calc_optimal_vcmax_knownchi.R')
-sourceDirectory('optimal_vcmax_R/functions', modifiedOnly = FALSE)
+sourceDirectory('optimal_vcmax_R_old/functions', modifiedOnly = FALSE)
 
 ### functions to calculate vcmax, jmax, and vpmax for C4 plants
 source("C4model/C4model_knownchi.R")
@@ -502,7 +502,7 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-1.5, 0.5)) +
+    scale_x_continuous(limits = c(-1.5, 1)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['photo'])))
 
