@@ -61,7 +61,8 @@ C4model <- function(tg_c = 25, z = 0, vpdo = 1, cao = 400, oao = 209460,
   omega <- calc_omega(theta = theta, c = 0.01, m = m) # Eq. S4
   omega_star <- (1 + (omega) - sqrt((1 + (omega))^2 - (4 * theta * omega)))  # Eq. 18
   # calculate q0 using Bernacchi et al. (2003) temperature response (set to 0.257 at 25C)
-  q0 <- -0.0805 + (0.022 * tg_c) - (0.00034 * tg_c * tg_c)
+  # q0 <- -0.0805 + (0.022 * tg_c) - (0.00034 * tg_c * tg_c)
+  q0 <- 0.257
   Al <- q0 * par * m * omega_star / (8 * theta) # Eqn. 2.2
   jmax <- q0 * par * omega
   

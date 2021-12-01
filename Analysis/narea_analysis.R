@@ -136,11 +136,11 @@ leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
-summary(leafNarea_lmer) # N = 1,812
+summary(leafNarea_lmer) # N = 1,878
 Anova(leafNarea_lmer)
 
-pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
-cld(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
+# pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
+# cld(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
 
 ### get some stats
 #### soil nitrogen effect
@@ -296,7 +296,8 @@ narea_tm$name <- c('Soil~N', 'Soil~P', 'Soil~K[+µ]', 'italic(T)[g]', 'italic(I)
     #           aes(x = x, y = y), parse = T, size = 8) +
     geom_text(data = filter(narea_tm, Factor == 'χ'), 
               aes(x = x, y = y), parse = T, size = 10, family = 'Times') +
-    geom_text(data = filter(narea_tm, Factor == 'Unexplained' | Factor == 'Temperature' | Factor == 'N fixer' | Factor == 'C3/C4'), 
+    geom_text(data = filter(narea_tm, Factor == 'Unexplained' | Factor == 'Temperature' | 
+                              Factor == 'N fixer' | Factor == 'C3/C4'), 
               aes(x = x, y = y), parse = T, size = 7) +
     geom_text(data = filter(narea_tm, Factor == 'Soil N'), 
               aes(x = x, y = y), parse = T, size = 4) +
@@ -377,14 +378,14 @@ leaf_chi_subset_npred$lognstructure <- log(leaf_chi_subset_npred$nstructure)
 
 ### fit linear mixed effects model
 npred_soil_lmer <- lmer(log(narea) ~ lognphoto + lognstructure +
-                          Nfix + photosynthetic_pathway + 
                           Ntrt_fac * Ptrt_fac * Ktrt_fac +
+                          Nfix + photosynthetic_pathway + 
                           (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac),
                         data = leaf_chi_subset_npred)
 # plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
-summary(npred_soil_lmer) # N = 1,812
+summary(npred_soil_lmer) # N = 1,865
 Anova(npred_soil_lmer)
-cld(emmeans(npred_soil_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
+# cld(emmeans(npred_soil_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
 ### make figures
 ## find slope and intercept from mixed effects model
@@ -496,14 +497,14 @@ narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'S
     scale_fill_gradient(low = "lightcyan", high = "lightcyan4") +
     geom_text(data = filter(narea_tm_pred, Factor == 'Unexplained'),
               aes(x = x, y = y), parse = T, size = 14) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Soil K+µ' | Factor == 'C3/C4' | Factor == 'N fixer'),
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil K+µ' | Factor == 'Soil P' | Factor == 'Soil N'),
               aes(x = x, y = y), parse = T, size = 10) +
     geom_text(data = filter(narea_tm_pred, Factor == 'N structure' | Factor == 'N photo' | 
-                              Factor == 'Soil N'),
+                              Factor == 'N fixer'),
               aes(x = x, y = y), parse = T, size = 8) +
     geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions'),
               aes(x = x, y = y), parse = T, size = 7) +
-    ggrepel::geom_text_repel(data = filter(narea_tm_pred, Factor == 'Soil P'), 
+    ggrepel::geom_text_repel(data = filter(narea_tm_pred, Factor == 'C3/C4'), 
                              aes(x = x, y = y), parse = T, size = 4, 
                              direction = "y", xlim = c(1.01, NA)) +
     scale_x_continuous(limits = c(0, 1.1), expand = c(0, 0)) +
@@ -561,7 +562,7 @@ live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
 summary(live_mass_lmer) # N = 763
 Anova(live_mass_lmer)
 
-pwpm(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
+# pwpm(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
 # (summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])/
 #   summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]
@@ -699,7 +700,7 @@ delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass +
                             (1|Taxon:site_code:block_fac), 
                         data = delta_live_mass_data)
 # plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
-summary(delta_live_mass_lm) # N = 310
+summary(delta_live_mass_lm) # N = 165
 Anova(delta_live_mass_lm)
 
 # emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass')
@@ -957,7 +958,7 @@ delta_live_mass_response_lm <- lmer(delta_live_mass ~
                              (1|Taxon:site_code:block_fac), 
                            data = delta_live_mass_data)
 # plot(resid(delta_live_mass_response_lm) ~ fitted(delta_live_mass_response_lm))
-summary(delta_live_mass_response_lm) # N = 310
+summary(delta_live_mass_response_lm) # N = 309
 Anova(delta_live_mass_response_lm)
 
 plot(delta_live_mass ~ (spp_live_mass.x), data = delta_live_mass_data, xlim = c(0, 400))
@@ -990,7 +991,7 @@ ggsave("plots/npred_plot.jpeg", plot = npred_plot,
 ggsave("plots/narea_pred_treemap.jpeg", plot = narea_pred_treemap, 
        width = 29, height = 18, units = "cm")
 
- ggsave("plots/live_mass_plot.jpeg", plot = live_mass_plot, 
+ggsave("plots/live_mass_plot.jpeg", plot = live_mass_plot, 
        width = 29, height = 18, units = "cm")
 
 ggsave("plots/delta_live_mass_plot.jpeg", plot = delta_live_mass_plot, 
