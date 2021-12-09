@@ -138,11 +138,11 @@ leaf$logpar_per_leaf_area <- log(leaf$par_per_leaf_area)
 leaf$logvpd <- log(leaf$vpd)
 leaf$loglma <- log(leaf$lma)
 leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + 
-                         logpar + loglma + chi + Nfix + photosynthetic_pathway +
+                         logpar_per_leaf_area + loglma + chi + Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                       data = leaf_chi_subset)
 # plot(resid(leafNarea_lmer) ~ fitted(leafNarea_lmer))
-summary(leafNarea_lmer) # N = 1,878
+summary(leafNarea_lmer) # N = 1,561
 Anova(leafNarea_lmer)
 
 # pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
@@ -150,30 +150,30 @@ Anova(leafNarea_lmer)
 
 ### get some stats
 #### soil nitrogen effect
-# # percentage increase of Narea in plots receiving N compared to plots not receiving N 
-# (summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])/
-#   summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]
-# # 0.2262
-# 
-# # percentage increase of Narea in plots receiving N but not P compared to plots not receiving N or P
-# (summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[2,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3])/
-#   summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3]
-# # 0.2758
-# 
-# # percentage increase of Narea in plots receiving N and P compared to plots receiving P but not N
-# (summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[4,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3])/
-#   summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3]
-# # 0.1793
-# 
-# # percentage increase of Narea in N fixers compared to non-N fixers
-# (summary(emmeans(leafNarea_lmer, ~Nfix))[2,2] - summary(emmeans(leafNarea_lmer, ~Nfix))[1,2])/
-#   summary(emmeans(leafNarea_lmer, ~Nfix))[1,2]
-# # 0.7731
-# 
-# # percentage increase of Narea in C3s compared to C4s
-# (summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2] - summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[2,2])/
-#   summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2]
-# # 0.4544
+# percentage increase of Narea in plots receiving N compared to plots not receiving N
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])/
+  summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]
+# 0.286
+
+# percentage increase of Narea in plots receiving N but not P compared to plots not receiving N or P
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[2,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3])/
+  summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3]
+# 0.352
+
+# percentage increase of Narea in plots receiving N and P compared to plots receiving P but not N
+(summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[4,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3])/
+  summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3]
+# 0.225
+
+# percentage increase of Narea in N fixers compared to non-N fixers
+(summary(emmeans(leafNarea_lmer, ~Nfix))[2,2] - summary(emmeans(leafNarea_lmer, ~Nfix))[1,2])/
+  summary(emmeans(leafNarea_lmer, ~Nfix))[1,2]
+# 1.022
+
+# percentage increase of Narea in C3s compared to C4s
+(summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2] - summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[2,2])/
+  summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2]
+# 0.516
 
 ### make figures
 ## find slope and intercept from mixed effects model
@@ -219,13 +219,13 @@ lma_trend <- as.data.frame(cbind(lma_seq, lma_trend))
     xlab(expression('ln ' * italic('M')['area'])))
 
 ## find slope and intercept from mixed effects model
-par_slope <- summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 2] # slope = 0.936
-par_intercept <- summary(emmeans(leafNarea_lmer, ~logpar, at = list(logpar = 0)))[1, 2] # intercept = -3.32
-par_seq <- seq(min(leaf_chi_subset$logpar, na.rm = T), max(leaf_chi_subset$logpar, na.rm = T), 0.01)
+par_slope <- summary(emtrends(leafNarea_lmer, ~logpar_per_leaf_area, var = "logpar_per_leaf_area"))[1, 2] # slope = 0.936
+par_intercept <- summary(emmeans(leafNarea_lmer, ~logpar_per_leaf_area, at = list(logpar_per_leaf_area = 0)))[1, 2] # intercept = -3.32
+par_seq <- seq(min(leaf_chi_subset$logpar_per_leaf_area, na.rm = T), max(leaf_chi_subset$logpar_per_leaf_area, na.rm = T), 0.01)
 par_trend <- par_intercept + par_seq * par_slope
 par_trend <- as.data.frame(cbind(par_seq, par_trend))
 
-(par_plot <- ggplot(data = leaf_chi_subset, aes(x = log(par), y = log(narea))) + 
+(par_plot <- ggplot(data = leaf_chi_subset, aes(x = logpar_per_leaf_area, y = log(narea))) + 
     geom_jitter(pch = 21, fill = "black", alpha = 0.8) + 
     geom_line(data = par_trend, aes(x = par_seq, y = par_trend), 
               col = 'black', lwd = 2, alpha = 0.8) +
@@ -337,13 +337,13 @@ Narea_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Temperature'
 Narea_model$df <- as.matrix(Anova(leafNarea_lmer))[1:13, 2]
 Narea_model$Slope <- c(NA, NA, NA,
                       summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 2],
-                      summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 2],
+                      summary(emtrends(leafNarea_lmer, ~logpar_per_leaf_area, var = "logpar_per_leaf_area"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 2],
                       summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 2],
                       NA, NA, NA, NA, NA, NA)
 Narea_model$SE <- c(NA, NA, NA,
                        summary(emtrends(leafNarea_lmer, ~tmp, var = "tmp"))[1, 3],
-                       summary(emtrends(leafNarea_lmer, ~logpar, var = "logpar"))[1, 3],
+                       summary(emtrends(leafNarea_lmer, ~logpar_per_leaf_area, var = "logpar_per_leaf_area"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~loglma, var = "loglma"))[1, 3],
                        summary(emtrends(leafNarea_lmer, ~chi, var = "chi"))[1, 3],
                        NA, NA, NA, NA, NA, NA)
@@ -400,7 +400,7 @@ npred_soil_lmer <- lmer(log(narea) ~ lognphoto + lognstructure +
                           (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac),
                         data = leaf_chi_subset_npred)
 # plot(resid(npred_soil_lmer) ~ fitted(npred_soil_lmer))
-summary(npred_soil_lmer) # N = 1,865
+summary(npred_soil_lmer) # N = 1,548
 Anova(npred_soil_lmer)
 # cld(emmeans(npred_soil_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
@@ -427,14 +427,12 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
     geom_point(shape = 16, size = 3, alpha = 0.8) +
     scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
     labs(color = 'Soil N') +
-    # geom_abline(slope = 0.478, intercept = -0.28) +
-    # geom_abline(slope = 0.478, intercept = -0.106) +
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_lowN), 
               col = 'black', lwd = 2, alpha = 0.8) +
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
-    scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-1.1, 0)) +
+    scale_y_continuous(limits = c(-2.5, 5.5)) +
+    scale_x_continuous(limits = c(-2, 0)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['photo'])))
   
@@ -465,14 +463,12 @@ nstructure_trend <- as.data.frame(cbind(lognstructure_seq, nstructure_trend_lowN
     geom_point(shape = 16, size = 2, alpha = 0.8) +
     scale_color_manual(values = c("black", "burlywood1"), labels = c("Ambient", "Added N")) +
     labs(color = 'Soil N') +
-    # geom_abline(slope = 0.95, intercept = 1.22) +
-    # geom_abline(slope = 0.95, intercept = 1.4) +
     geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_lowN), 
               col = 'black', lwd = 3, alpha = 0.8) +
     geom_line(data = nstructure_trend, aes(x = lognstructure_seq, y = nstructure_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
-    scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-5, 3)) +
+    scale_y_continuous(limits = c(-2.5, 5.5)) +
+    scale_x_continuous(limits = c(-5, 2.75)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['structure'])))
 
@@ -514,9 +510,10 @@ narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'S
     scale_fill_gradient(low = "lightcyan", high = "lightcyan4") +
     geom_text(data = filter(narea_tm_pred, Factor == 'Unexplained'),
               aes(x = x, y = y), parse = T, size = 14) +
-    geom_text(data = filter(narea_tm_pred, Factor == 'Soil K+µ' | Factor == 'Soil P' | Factor == 'Soil N'),
-              aes(x = x, y = y), parse = T, size = 10) +
     geom_text(data = filter(narea_tm_pred, Factor == 'N structure' | Factor == 'N photo' | 
+                              Factor == 'Soil N'),
+              aes(x = x, y = y), parse = T, size = 10) +
+    geom_text(data = filter(narea_tm_pred, Factor == 'Soil K+µ' | Factor == 'Soil P' | 
                               Factor == 'N fixer'),
               aes(x = x, y = y), parse = T, size = 8) +
     geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions'),
@@ -560,7 +557,7 @@ lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                   (1|site_code) + (1|site_code:block), 
                 data = leaf_site)
 ## plot(resid(lai_lmer) ~ fitted(lai_lmer))
-summary(lai_lmer) # N = 551
+summary(lai_lmer)
 Anova(lai_lmer)
 
 lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
@@ -581,15 +578,15 @@ Anova(live_mass_lmer)
 
 # pwpm(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
-# # percentage increase of live mass in plots receiving N compared to plots not receiving N 
-# (summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])/
-#   summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]
-# # 0.0411
-# 
-# # percentage increase of live mass in plots receiving N and K compared to plots receiving K but not N
-# (summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[4,3] - summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3])/
-#   summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3]
-# # 0.055
+# percentage increase of live mass in plots receiving N compared to plots not receiving N
+(summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])/
+  summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]
+# 0.0411
+
+# percentage increase of live mass in plots receiving N and K compared to plots receiving K but not N
+(summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[4,3] - summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3])/
+  summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3]
+# 0.055
 
 live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                        'Soil N x Soil K', 'Soil P x Soil K', 
