@@ -144,19 +144,30 @@ Anova(leafNarea_lmer)
 
 ### get some stats
 #### soil nitrogen effect
+# # percentage increase of Narea in plots receiving N compared to plots not receiving N 
 # (summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2])/
 #   summary(emmeans(leafNarea_lmer, ~Ntrt_fac))[1,2]
+# # 0.2262
 # 
+# # percentage increase of Narea in plots receiving N but not P compared to plots not receiving N or P
 # (summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[2,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3])/
 #   summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[1,3]
+# # 0.2758
+# 
+# # percentage increase of Narea in plots receiving N and P compared to plots receiving P but not N
 # (summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[4,3] - summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3])/
 #   summary(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac))[3,3]
+# # 0.1793
 # 
+# # percentage increase of Narea in N fixers compared to non-N fixers
 # (summary(emmeans(leafNarea_lmer, ~Nfix))[2,2] - summary(emmeans(leafNarea_lmer, ~Nfix))[1,2])/
 #   summary(emmeans(leafNarea_lmer, ~Nfix))[1,2]
+# # 0.7731
 # 
+# # percentage increase of Narea in C3s compared to C4s
 # (summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2] - summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[2,2])/
 #   summary(emmeans(leafNarea_lmer, ~photosynthetic_pathway))[1,2]
+# # 0.4544
 
 ### make figures
 ## find slope and intercept from mixed effects model
@@ -564,10 +575,15 @@ Anova(live_mass_lmer)
 
 # pwpm(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 
+# # percentage increase of live mass in plots receiving N compared to plots not receiving N 
 # (summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])/
 #   summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]
+# # 0.0411
+# 
+# # percentage increase of live mass in plots receiving N and K compared to plots receiving K but not N
 # (summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[4,3] - summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3])/
 #   summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3]
+# # 0.055
 
 live_mass_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
                                        'Soil N x Soil K', 'Soil P x Soil K', 
@@ -695,7 +711,8 @@ delta_live_mass_data <- subset(leaf_site_trt,
 delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass + 
                             Ptrt_fac * Ktrt_fac +
                             photosynthetic_pathway + Nfix +
-                            delta_live_mass * delta_lma * delta_chi +
+                            delta_live_mass * delta_lma +
+                             # delta_chi +
                             (1|Taxon) + (1|Taxon:site_code) +
                             (1|Taxon:site_code:block_fac), 
                         data = delta_live_mass_data)
