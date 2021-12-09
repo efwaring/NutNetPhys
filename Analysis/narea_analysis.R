@@ -121,6 +121,12 @@ leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 
 ## create subset of data where chi is greater than 0 and less than 1
 leaf_chi_subset = subset(leaf, chi > 0 & chi < 1) # lose 659 points
+# leaf_chi_subset1$chi_mad <- abs(leaf_chi_subset1$chi - median(leaf_chi_subset1$chi)) /
+#   mad(leaf_chi_subset1$chi)
+# hist(leaf_chi_subset1$chi_mad)
+# nrow(leaf_chi_subset1)
+# leaf_chi_subset <- subset(leaf_chi_subset1, chi_mad < 5)
+# nrow(leaf_chi_subset)
 
 ### linear mixed effects model
 leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
@@ -353,7 +359,7 @@ write.csv(Narea_model, 'tables/Narea_model.csv')
 leaf_chi_subset_c3 <- subset(leaf_chi_subset, photosynthetic_pathway == 'C3')
 gas_exchange_pred_c3 <- calc_optimal_vcmax(pathway = "C3",
                                            tg_c = leaf_chi_subset_c3$tmp, 
-                                           paro = leaf_chi_subset_c3$par, 
+                                           paro = leaf_chi_subset_c3$par_per_leaf_area, 
                                            cao = 400, 
                                            vpdo = leaf_chi_subset_c3$vpd, 
                                            z = leaf_chi_subset_c3$z,
@@ -365,7 +371,7 @@ gas_exchange_pred_c3 <- calc_optimal_vcmax(pathway = "C3",
 leaf_chi_subset_c4 <- subset(leaf_chi_subset, photosynthetic_pathway == 'C4')
 gas_exchange_pred_c4 <- calc_optimal_vcmax(pathway = "C4",
                                            tg_c = leaf_chi_subset_c4$tmp, 
-                                           paro = leaf_chi_subset_c4$par, 
+                                           paro = leaf_chi_subset_c4$par_per_leaf_area, 
                                            cao = 400, 
                                            vpdo = leaf_chi_subset_c4$vpd, 
                                            z = leaf_chi_subset_c4$z,
@@ -428,7 +434,7 @@ nphoto_trend <- as.data.frame(cbind(lognphoto_seq, nphoto_trend_lowN, nphoto_tre
     geom_line(data = nphoto_trend, aes(x = lognphoto_seq, y = nphoto_trend_highN), 
               col = 'burlywood1', lwd = 3, alpha = 0.8) +
     scale_y_continuous(limits = c(-2.5, 7.5)) +
-    scale_x_continuous(limits = c(-1.1, 0.75)) +
+    scale_x_continuous(limits = c(-1.1, 0)) +
     ylab(expression('ln ' * italic('N')['area'])) +
     xlab(expression('ln ' * italic('N')['photo'])))
   
