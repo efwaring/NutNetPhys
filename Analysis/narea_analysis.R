@@ -637,17 +637,24 @@ live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
 #### supply vs demand effects on leaf N ####
 ### calculate treatment type averages
 leaf_site_N <- leaf_chi_subset_npred %>%
-  group_by(site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac, block_fac, fence, trt,
-           plot, Taxon, grass, Nfix, photosynthetic_pathway) %>%
+  group_by(site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac, 
+           block_fac, 
+           fence, trt,
+           # plot, 
+           Taxon 
+           # grass, Nfix, photosynthetic_pathway
+           ) %>%
   summarise_at(vars(narea, spp_lai, chi, spp_live_mass, spp_mass_N, max_cover, lma, p_pet, vpd, tmp,
                     Ambient_PAR, Ground_PAR, par_rat),
                mean, na.rm = TRUE)
 
 ### subset by low N treatment
 leaf_site_lowN <- subset(leaf_site_N, Ntrt_fac == '0')
+nrow(leaf_site_lowN)
 
 ### subset by high N treatment
 leaf_site_highN <- subset(leaf_site_N, Ntrt_fac == '1')
+nrow(leaf_site_highN)
 
 ### combine low N and high N subsets
 leaf_site_trt <- left_join(leaf_site_lowN, leaf_site_highN, 
@@ -655,7 +662,9 @@ leaf_site_trt <- left_join(leaf_site_lowN, leaf_site_highN,
                                        'block_fac', 
                                        'Ptrt_fac', 'Ktrt_fac',
                                        'fence',
-                                       'Taxon', 'grass', 'Nfix', 'photosynthetic_pathway'))
+                                       'Taxon' 
+                                       # 'grass', 'Nfix', 'photosynthetic_pathway'
+                                       ))
 
 ### calculate percent change from the high N plots to the low N plots
 leaf_site_trt$delta_narea <- ((leaf_site_trt$narea.y - 
@@ -670,6 +679,8 @@ leaf_site_trt$delta_chi <- ((leaf_site_trt$chi.y -
                               leaf_site_trt$chi.x) / leaf_site_trt$chi.x) * 100
 leaf_site_trt$delta_lma <- ((leaf_site_trt$lma.y - 
                               leaf_site_trt$lma.x) / leaf_site_trt$lma.x) * 100
+
+nrow(subset(leaf_site_trt, delta_narea > -1000))
 
 ### find mean absolute deviation (Leys et al., 2013)
 delta_narea_mad <- mad(leaf_site_trt$delta_narea, na.rm = T)
@@ -690,44 +701,54 @@ delta_chi_mad <- mad(leaf_site_trt$delta_chi, na.rm = T)
 #                           delta_chi < 3 * delta_chi_mad & 
 #                           delta_chi > 3 * -delta_chi_mad)
 
-delta_live_mass_data <- subset(leaf_site_trt, 
-                               delta_narea < 3 * delta_narea_mad & 
-                                 delta_narea > 3 * -delta_narea_mad &
-                                 delta_lma < 3 * delta_lma_mad &
-                                 delta_lma > 3 * -delta_lma_mad &
-                                 delta_live_mass < 3 * delta_live_mass_mad & 
-                                 delta_live_mass > 3 * -delta_live_mass_mad &
-                                 delta_chi < 3 * delta_chi_mad &
-                                 delta_chi > 3 * -delta_chi_mad)
+delta_live_mass_data <- subset(leaf_site_trt,
+                             delta_narea < 3 * delta_narea_mad &
+                               delta_narea > 3 * -delta_narea_mad &
+                               delta_lma < 3 * delta_lma_mad &
+                               delta_lma > 3 * -delta_lma_mad &
+                               delta_live_mass < 3 * delta_live_mass_mad &
+                               delta_live_mass > 3 * -delta_live_mass_mad) #&
+                               # delta_chi < 5 * delta_chi_mad &
+                               # delta_chi > 5 * -delta_chi_mad)
+
+# delta_live_mass_data <- leaf_site_trt
 
 # delta_N_mass_data <- subset(leaf_site_trt, 
-#                             delta_narea < 3 * delta_narea_mad & 
-#                               delta_narea > 3 * -delta_narea_mad &
-#                               delta_lma < 3 * delta_lma_mad &
-#                               delta_lma > 3 * -delta_lma_mad &
-#                               delta_N_mass < 3 * delta_N_mass_mad & 
-#                               delta_N_mass > 3 * -delta_N_mass_mad &
-#                               delta_chi < 3 * delta_chi_mad &
-#                               delta_chi > 3 * -delta_chi_mad)
+#                            delta_narea < 5 * delta_narea_mad & 
+#                              delta_narea > 5 * -delta_narea_mad &
+#                              delta_lma < 5 * delta_lma_mad &
+#                              delta_lma > 5 * -delta_lma_mad &
+#                              delta_N_mass < 5 * delta_N_mass_mad & 
+#                              delta_N_mass > 5 * -delta_N_mass_mad) #&
+#                              # delta_chi < 3 * delta_chi_mad &
+#                              # delta_chi > 3 * -delta_chi_mad)
 
 ### linear mixed effects model for delta Narea by delta live mass
-delta_live_mass_lm <- lmer(delta_narea ~ delta_live_mass + 
+delta_live_mass_lm <- lmer(delta_narea ~ 
+                            delta_live_mass + 
                             Ptrt_fac * Ktrt_fac +
-                            photosynthetic_pathway + Nfix +
-                            delta_live_mass * delta_lma +
-                             # delta_chi +
+                            # photosynthetic_pathway + Nfix +
+                            delta_lma +
+                            delta_live_mass : delta_lma +
+                            # delta_live_mass * delta_chi +
+                            # delta_live_mass * delta_lma * delta_chi +
                             (1|Taxon) + (1|Taxon:site_code) +
-                            (1|Taxon:site_code:block_fac), 
+                            (1|Taxon:block_fac:site_code)
+                           , 
                         data = delta_live_mass_data)
 # plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
-summary(delta_live_mass_lm) # N = 165
+summary(delta_live_mass_lm) # N = 328
 Anova(delta_live_mass_lm)
 
-# emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass')
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#                  at = list(delta_lma = -25)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass'))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                at = list(delta_lma = -25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 0)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+             at = list(delta_lma = 25)))
+
+emmeans(delta_live_mass_lm, ~Ptrt_fac)
 # 
 # test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
 #               at = list(delta_lma = -25, delta_chi = -10)))
