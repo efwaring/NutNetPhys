@@ -13,6 +13,7 @@ library(emmeans)
 library(relaimpo)
 library(patchwork)
 library(multcomp)
+library(ggplot2)
 
 #### load functions ####
 ### functions to calculate vcmax and jmax 
@@ -121,12 +122,6 @@ leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 
 ## create subset of data where chi is greater than 0 and less than 1
 leaf_chi_subset = subset(leaf, chi > 0 & chi < 1) # lose 659 points
-# leaf_chi_subset1$chi_mad <- abs(leaf_chi_subset1$chi - median(leaf_chi_subset1$chi)) /
-#   mad(leaf_chi_subset1$chi)
-# hist(leaf_chi_subset1$chi_mad)
-# nrow(leaf_chi_subset1)
-# leaf_chi_subset <- subset(leaf_chi_subset1, chi_mad < 5)
-# nrow(leaf_chi_subset)
 
 ### linear mixed effects model
 leaf_chi_subset$logpar <- log(leaf_chi_subset$par)
@@ -552,21 +547,21 @@ leaf_site$Ptrt_fac <- as.factor(leaf_site$Ptrt)
 leaf_site$Ktrt_fac <- as.factor(leaf_site$Ktrt)
 leaf_site$block_fac <- as.factor(leaf_site$block)
 
-## linear mixed effects model for leaf area index (lai)
-lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
-                  (1|site_code) + (1|site_code:block), 
-                data = leaf_site)
-## plot(resid(lai_lmer) ~ fitted(lai_lmer))
-summary(lai_lmer)
-Anova(lai_lmer)
-
-lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
-                                      'Soil N x Soil K', 'Soil P x Soil K', 
-                                      'Soil N x Soil P x Soil K')) 
-lai_model$chisq <- as.matrix(Anova(lai_lmer)[1:7, 1])
-lai_model$df <- as.matrix(Anova(lai_lmer)[1:7, 2])
-lai_model$p <- as.matrix(Anova(lai_lmer)[1:7, 3])
-write.csv(lai_model, 'tables/lai_model.csv')
+# ## linear mixed effects model for leaf area index (lai)
+# lai_lmer <- lmer(log(lai_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
+#                   (1|site_code) + (1|site_code:block), 
+#                 data = leaf_site)
+# ## plot(resid(lai_lmer) ~ fitted(lai_lmer))
+# summary(lai_lmer)
+# Anova(lai_lmer)
+# 
+# lai_model <- data.frame(Var = c('Soil N', 'Soil P', 'Soil K+µ', 'Soil N x Soil P', 
+#                                       'Soil N x Soil K', 'Soil P x Soil K', 
+#                                       'Soil N x Soil P x Soil K')) 
+# lai_model$chisq <- as.matrix(Anova(lai_lmer)[1:7, 1])
+# lai_model$df <- as.matrix(Anova(lai_lmer)[1:7, 2])
+# lai_model$p <- as.matrix(Anova(lai_lmer)[1:7, 3])
+# write.csv(lai_model, 'tables/lai_model.csv')
 
 ### linear mixed effects model for mean live mass
 live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
@@ -723,7 +718,7 @@ delta_live_mass_data <- subset(leaf_site_trt,
 #                              # delta_chi < 3 * delta_chi_mad &
 #                              # delta_chi > 3 * -delta_chi_mad)
 
-### linear mixed effects model for delta Narea by delta live mass
+#### linear mixed effects model for delta Narea by delta live mass ####
 delta_live_mass_lm <- lmer(delta_narea ~ 
                             delta_live_mass + 
                             Ptrt_fac * Ktrt_fac +
@@ -733,263 +728,124 @@ delta_live_mass_lm <- lmer(delta_narea ~
                             # delta_live_mass * delta_chi +
                             # delta_live_mass * delta_lma * delta_chi +
                             (1|Taxon) + (1|Taxon:site_code) +
-                            (1|Taxon:block_fac:site_code)
-                           , 
+                            (1|Taxon:block_fac:site_code), 
                         data = delta_live_mass_data)
 # plot(resid(delta_live_mass_lm) ~ fitted(delta_live_mass_lm))
 summary(delta_live_mass_lm) # N = 328
 Anova(delta_live_mass_lm)
 
-test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass'))
-test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-                at = list(delta_lma = -25)))
-test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-              at = list(delta_lma = 0)))
-test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-             at = list(delta_lma = 25)))
-
-emmeans(delta_live_mass_lm, ~Ptrt_fac)
-# 
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = -25, delta_chi = -10)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 0, delta_chi = -10)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 25, delta_chi = -10)))
-# 
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = -25, delta_chi = 0)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 0, delta_chi = 0)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 25, delta_chi = 0)))
-# 
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = -25, delta_chi = 10)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 0, delta_chi = 10)))
-# test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
-#               at = list(delta_lma = 25, delta_chi = 10)))
-# 
-# emmeans(delta_live_mass_lm, ~Ptrt_fac)
-
-delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K', 'C3/C4', 
-                                            'N fixer', 'delta LMA', 'delta Chi', 'Soil P x Soil K',
-                                            'delta AGB x delta LMA', 'delta AGB x delta Chi',
-                                            'delta LMA x delta Chi', 'delta AGB x delta LMA x delta Chi')) 
-delta_live_mass_model$chisq <- as.matrix(Anova(delta_live_mass_lm)[1:12, 1])
-delta_live_mass_model$df <- as.matrix(Anova(delta_live_mass_lm)[1:12, 2])
-delta_live_mass_model$p <- as.matrix(Anova(delta_live_mass_lm)[1:12, 3])
+delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K',  
+                                            'delta LMA', 'Soil P x Soil K',
+                                            'delta AGB x delta LMA')) 
+delta_live_mass_model$chisq <- as.matrix(Anova(delta_live_mass_lm)[1:6, 1])
+delta_live_mass_model$df <- as.matrix(Anova(delta_live_mass_lm)[1:6, 2])
+delta_live_mass_model$p <- as.matrix(Anova(delta_live_mass_lm)[1:6, 3])
 write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
+
+ggplot(data = delta_live_mass_plot_data, aes(x = delta_lma, y = delta_narea)) + geom_point()
 
 ### make figures
 ## dataset
 delta_live_mass_plot_data <- delta_live_mass_data
 
 ## trendline information
-# low chi
-dlm_lowlma_lowchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                              at = list(delta_live_mass = 0, delta_lma = -25, delta_chi = -10)))[1, 2]
-dlm_lowlma_lowchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                           at = list(delta_lma = -25, delta_chi = -10)))[1, 2]
-dlm_midlma_lowchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                              at = list(delta_live_mass = 0, delta_lma = 0, delta_chi = -10)))[1, 2]
-dlm_midlma_lowchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                           at = list(delta_lma = 0, delta_chi = -10)))[1, 2]
-dlm_highlma_lowchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                              at = list(delta_live_mass = 0, delta_lma = 25, delta_chi = -10)))[1, 2]
-dlm_highlma_lowchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                           at = list(delta_lma = 25, delta_chi = -10)))[1, 2]
+delta_live_mass_plot_intercept_lowlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                         at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2]
+delta_live_mass_plot_slope_lowlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                      at = list(delta_lma = -25)))[1, 2]
+delta_live_mass_plot_intercept_midlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                         at = list(delta_live_mass = 0, delta_lma = 0)))[1, 2]
+delta_live_mass_plot_slope_midlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                      at = list(delta_lma = 0)))[1, 2]
+delta_live_mass_plot_intercept_highlma <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                          at = list(delta_live_mass = 0, delta_lma = 25)))[1, 2]
+delta_live_mass_plot_slope_highlma <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                       at = list(delta_lma = 25)))[1, 2]
 
-dlm_lowlma_lowchi_trend <- dlm_lowlma_lowchi_slope *
+delta_live_mass_plot_trend_lowlma <- delta_live_mass_plot_slope_lowlma * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_lowlma_lowchi_intercept
+  delta_live_mass_plot_intercept_lowlma
 
-dlm_midlma_lowchi_trend <- dlm_midlma_lowchi_slope *
+delta_live_mass_plot_trend_midlma <- delta_live_mass_plot_slope_midlma * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_midlma_lowchi_intercept
+  delta_live_mass_plot_intercept_midlma
 
-dlm_highlma_lowchi_trend <- dlm_highlma_lowchi_slope *
+delta_live_mass_plot_trend_highlma <- delta_live_mass_plot_slope_highlma * 
   seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_highlma_lowchi_intercept
+  delta_live_mass_plot_intercept_highlma
 
-dlm_lowchi_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass),
-                                               max(delta_live_mass_plot_data$delta_live_mass), 1),
-                                dlm_lowlma_lowchi_trend,
-                                dlm_midlma_lowchi_trend,
-                                dlm_highlma_lowchi_trend)
-colnames(dlm_lowchi_trend_df) <- c('delta_live_mass', 'delta_narea_lowlma', 'delta_narea_midlma', 'delta_narea_highlma')
+delta_live_mass_plot_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass), 
+                                                max(delta_live_mass_plot_data$delta_live_mass), 1),
+                                            delta_live_mass_plot_trend_lowlma, 
+                                            delta_live_mass_plot_trend_midlma, 
+                                            delta_live_mass_plot_trend_highlma)
+colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass', 
+                                             'delta_narea_lowlma', 
+                                             'delta_narea_midlma', 
+                                             'delta_narea_highlma')
 
-# mid chi
-dlm_lowlma_midchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                               at = list(delta_live_mass = 0, delta_lma = -25, delta_chi = 0)))[1, 2]
-dlm_lowlma_midchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                            at = list(delta_lma = -25, delta_chi = 0)))[1, 2]
-dlm_midlma_midchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                               at = list(delta_live_mass = 0, delta_lma = 0, delta_chi = 0)))[1, 2]
-dlm_midlma_midchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                            at = list(delta_lma = 0, delta_chi = 0)))[1, 2]
-dlm_highlma_midchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                                at = list(delta_live_mass = 0, delta_lma = 25, delta_chi = 0)))[1, 2]
-dlm_highlma_midchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                             at = list(delta_lma = 25, delta_chi = 0)))[1, 2]
-
-dlm_lowlma_midchi_trend <- dlm_lowlma_midchi_slope *
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_lowlma_midchi_intercept
-
-dlm_midlma_midchi_trend <- dlm_midlma_midchi_slope *
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_midlma_midchi_intercept
-
-dlm_highlma_midchi_trend <- dlm_highlma_midchi_slope *
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_highlma_midchi_intercept
-
-dlm_midchi_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass),
-                                    max(delta_live_mass_plot_data$delta_live_mass), 1),
-                                dlm_lowlma_midchi_trend,
-                                dlm_midlma_midchi_trend,
-                                dlm_highlma_midchi_trend)
-colnames(dlm_midchi_trend_df) <- c('delta_live_mass', 'delta_narea_lowlma', 'delta_narea_midlma', 'delta_narea_highlma')
-
-# high chi
-dlm_lowlma_highchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                               at = list(delta_live_mass = 0, delta_lma = -25, delta_chi = 10)))[1, 2]
-dlm_lowlma_highchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                            at = list(delta_lma = -25, delta_chi = 10)))[1, 2]
-dlm_midlma_highchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                               at = list(delta_live_mass = 0, delta_lma = 0, delta_chi = 10)))[1, 2]
-dlm_midlma_highchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                            at = list(delta_lma = 0, delta_chi = 10)))[1, 2]
-dlm_highlma_highchi_intercept <- summary(emmeans(delta_live_mass_lm, ~delta_live_mass,
-                                                at = list(delta_live_mass = 0, delta_lma = 25, delta_chi = 10)))[1, 2]
-dlm_highlma_highchi_slope <- summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass',
-                                             at = list(delta_lma = 25, delta_chi = 10)))[1, 2]
-
-dlm_lowlma_highchi_trend <- dlm_lowlma_highchi_slope *
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_lowlma_highchi_intercept
-
-dlm_midlma_highchi_trend <- dlm_midlma_highchi_slope *
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_midlma_highchi_intercept
-
-dlm_highlma_highchi_trend <- dlm_highlma_highchi_slope *
-  seq(min(delta_live_mass_plot_data$delta_live_mass), max(delta_live_mass_plot_data$delta_live_mass), 1) +
-  dlm_highlma_highchi_intercept
-
-dlm_highchi_trend_df <- data.frame(seq(min(delta_live_mass_plot_data$delta_live_mass),
-                                      max(delta_live_mass_plot_data$delta_live_mass), 1),
-                                  dlm_lowlma_highchi_trend,
-                                  dlm_midlma_highchi_trend,
-                                  dlm_highlma_highchi_trend)
-colnames(dlm_highchi_trend_df) <- c('delta_live_mass', 'delta_narea_lowlma', 'delta_narea_midlma', 'delta_narea_highlma')
-
-(dlm_lowchi_plot <- ggplot(data = delta_live_mass_plot_data, 
-                                aes(x = delta_live_mass, y = delta_narea, fill = delta_lma)) +
-    theme(legend.position = c(1, 1),
-          legend.justification = c(1, 1),
-          legend.title = element_text(size = 28),
-          legend.text = element_text(size = 20),
-          legend.background = element_rect(fill = 'white', colour = 'black'),
-          plot.title = element_text(size = 30, colour = 'black', hjust = 0.5),
-          axis.title.y = element_text(size = 30, colour = 'black'),
+(delta_live_mass_plot <- ggplot(data = delta_live_mass_plot_data, 
+                                aes(x = delta_live_mass, y = delta_narea, fill = delta_lma, size = delta_lma)) +
+    theme(axis.title.y = element_text(size = 30, colour = 'black'),
           axis.title.x = element_text(size = 30, colour = 'black'),
           axis.text.x = element_text(size = 20, colour = 'black'),
           axis.text.y = element_text(size = 20, colour = 'black'),
-          panel.background = element_rect(fill = 'white', colour = 'black'),
-          panel.grid.major = element_line(colour = "grey")) +
-    # geom_point(shape = 21, colour = 'black', stroke = 0.5, size = 3) +
-    # scale_size_continuous(range = c(1, 5)) +
-    # scale_fill_gradient(low = 'grey80', high = 'grey0') +
-    geom_line(data = dlm_lowchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL),
-              size = 5, colour = 'palegreen', alpha = 1, lty = 5) +
-    geom_line(data = dlm_lowchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL),
-              size = 5, colour = 'palegreen3', alpha = 1, lty = 3) +
-    geom_line(data = dlm_lowchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL),
-              size = 5, colour = 'palegreen4', alpha = 1, lty = 3) +
-    scale_y_continuous(name = expression('∆' * italic('N')['area'] * ' (%)'), 
-                       limits = c(-60, 120),
-                       breaks = c(-60, 0, 60, 120)) +
-    scale_x_continuous(name = expression('∆' *'AGB' * ' (%)')) +
-    labs(title = expression("Low ∆"*chi)))
-
-(dlm_midchi_plot <- ggplot(data = delta_live_mass_plot_data, 
-                           aes(x = delta_live_mass, y = delta_narea)) +
-    theme(legend.position = c(1, 1),
-          legend.justification = c(1, 1),
+          legend.position = c(1, 0),
+          legend.justification = c(1, 0),
           legend.title = element_text(size = 28),
           legend.text = element_text(size = 20),
           legend.background = element_rect(fill = 'white', colour = 'black'),
-          plot.title = element_text(size = 30, colour = 'black', hjust = 0.5),
-          # axis.title.y = element_text(size = 30, colour = 'black'),
-          axis.title.y = element_blank(),
-          axis.title.x = element_text(size = 30, colour = 'black'),
-          axis.text.x = element_text(size = 20, colour = 'black'),
-          axis.text.y = element_text(size = 20, colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
-    # geom_point(shape = 21, colour = 'black', fill = 'grey', stroke = 0.5, size = 3) +
-    # scale_size_continuous(range = c(1, 5)) +
-    # scale_fill_gradient(low = 'grey80', high = 'grey0') +
-    geom_line(data = dlm_midchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL),
-              size = 5, colour = 'palegreen', alpha = 1, lty = 3) +
-    geom_line(data = dlm_midchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL),
-              size = 5, colour = 'palegreen3', alpha = 1, lty = 3) +
-    geom_line(data = dlm_midchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL),
-              size = 5, colour = 'palegreen4', alpha = 1, lty = 3) +
-    scale_y_continuous(
-      # name = expression('∆' * italic('N')['area'] * ' (%)'), 
-                       limits = c(-60, 120),
-                       breaks = c(-60, 0, 60, 120)) +
-    scale_x_continuous(name = expression('∆' *'AGB' * ' (%)')) +
-    labs(title = expression("Medium ∆"*chi)))
+    geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
+    scale_size_continuous(range = c(1, 5)) +
+    scale_fill_gradient(low = 'grey80', high = 'grey0') +
+    geom_line(data = delta_live_mass_plot_trend_df, 
+              aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
+              size = 7, colour = 'grey60', alpha = 1, lty = 2) +
+    geom_line(data = delta_live_mass_plot_trend_df, 
+              aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
+              size = 7, colour = 'grey40', alpha = 1, lty = 2) +
+    geom_line(data = delta_live_mass_plot_trend_df, 
+              aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
+              size = 7, colour = 'grey20', alpha = 1, lty = 2) +
+    labs(fill = expression('∆' * italic('M')['area'] * ' (%)')) +
+    guides(size = "none") +
+    ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
+    xlab(expression('∆' *'AGB' * ' (%)')))
 
-(dlm_highchi_plot <- ggplot(data = delta_live_mass_plot_data, 
-                           aes(x = delta_live_mass, y = delta_narea)) +
-    theme(legend.position = c(1, 1),
-          legend.justification = c(1, 1),
-          legend.title = element_text(size = 28),
-          legend.text = element_text(size = 20),
-          legend.background = element_rect(fill = 'white', colour = 'black'),
-          plot.title = element_text(size = 30, colour = 'black', hjust = 0.5),
-          # axis.title.y = element_text(size = 30, colour = 'black'),
-          axis.title.y = element_blank(),
-          axis.title.x = element_text(size = 30, colour = 'black'),
-          axis.text.x = element_text(size = 20, colour = 'black'),
-          axis.text.y = element_text(size = 20, colour = 'black'),
-          panel.background = element_rect(fill = 'white', colour = 'black'),
-          panel.grid.major = element_line(colour = "grey")) +
-    # geom_point(shape = 21, colour = 'black', fill = 'grey', stroke = 0.5, size = 3) +
-    # scale_size_continuous(range = c(1, 5)) +
-    # scale_fill_gradient(low = 'grey80', high = 'grey0') +
-    geom_line(data = dlm_highchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL),
-              size = 5, colour = 'palegreen', alpha = 1, lty = 5) +
-    geom_line(data = dlm_highchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL),
-              size = 5, colour = 'palegreen3', alpha = 1, lty = 3) +
-    geom_line(data = dlm_highchi_trend_df,
-              aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL),
-              size = 5, colour = 'palegreen4', alpha = 1, lty = 1) +
-    scale_y_continuous(
-      #name = expression('∆' * italic('N')['area'] * ' (%)'), 
-                       limits = c(-60, 120),
-                       breaks = c(-60, 0, 60, 120)) +
-    scale_x_continuous(name = expression('∆' *'AGB' * ' (%)')) +
-    labs(title = expression("High ∆"*chi)))
-
-(delta_live_mass_plot <- dlm_lowchi_plot + dlm_midchi_plot + dlm_highchi_plot + 
-  plot_layout(guides = 'collect') +
-  plot_annotation(tag_levels = 'A') & 
-  theme(plot.tag = element_text(size = 16)))
+delta_live_mass_trendlines <- data.frame(Var = c('delta LMA = -25', 'delta LMA = 0', 'delta LMA = 25')) 
+delta_live_mass_trendlines$Slope <- c(summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                       at = list(delta_lma = -25)))[1, 2],
+                                      summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                       at = list(delta_lma = 0)))[1, 2],
+                                      summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                       at = list(delta_lma = 25)))[1, 2])
+delta_live_mass_trendlines$Slope_SE <- c(summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                          at = list(delta_lma = -25)))[1, 3],
+                                         summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                          at = list(delta_lma = 0)))[1, 3],
+                                         summary(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                          at = list(delta_lma = 25)))[1, 3])
+delta_live_mass_trendlines$Intercept <- c(summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                          at = list(delta_live_mass = 0, delta_lma = -25)))[1, 2],
+                                          summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                          at = list(delta_live_mass = 0, delta_lma = 0)))[1, 2],
+                                          summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                          at = list(delta_live_mass = 0, delta_lma = 25)))[1, 2])
+delta_live_mass_trendlines$Intercept_SE <- c(summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                             at = list(delta_live_mass = 0, delta_lma = -25)))[1, 3],
+                                             summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                             at = list(delta_live_mass = 0, delta_lma = 0)))[1, 3],
+                                             summary(emmeans(delta_live_mass_lm, ~delta_live_mass, 
+                                                             at = list(delta_live_mass = 0, delta_lma = 25)))[1, 3])
+delta_live_mass_trendlines$p <- c(test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                at = list(delta_lma = -25)))[1,6],
+                                  test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                at = list(delta_lma = 0)))[1,6],
+                                  test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+                                                at = list(delta_lma = 25)))[1,6])
+write.csv(delta_live_mass_trendlines, 'tables/delta_live_mass_trendlines.csv')
 
 #### what determines the biomass responses??
 delta_live_mass_response_lm <- lmer(delta_live_mass ~ 
@@ -1011,30 +867,64 @@ leaf_site_climate <- leaf_chi_subset_npred %>%
                mean, na.rm = TRUE)
 cor(leaf_site_climate$par, leaf_site_climate$tmp)^2
 
+#### map of sites ####
+library(ggmap)
+library(maps)
+library(mapdata)
+
+site_data <- read.csv("../Data/sites-19-November-2021.csv")
+sites <- site_data %>% 
+  subset(site_code == "bldr.us" | site_code == "bnch.us" | site_code == "bogong.au" | 
+           site_code == "burrawan.au" | site_code == "cbgb.us" | site_code == "comp.pt" | 
+           site_code == "cowi.ca" | site_code == "elliot.us" | site_code == "frue.ch" | 
+           site_code == "gilb.za" | site_code == "hopl.us" | site_code == "jena.de" | 
+           site_code == "kiny.au" | site_code == "konz.us" | site_code == "lancaster.uk" | 
+           site_code == "look.us" | site_code == "mcla.us" | site_code == "mtca.au" | 
+           site_code == "sage.us" | site_code == "saline.us" | site_code == "sgs.us" | 
+           site_code == "shps.us" | site_code == "sier.us" | site_code == "smith.us" | 
+           site_code == "summ.za" | site_code == "unc.us" | site_code == "valm.ch")
+
+world_map <- map_data("world")
+world_map_subset <- subset(world_map, region != "Antarctica")
+(map_plot <- ggplot() + geom_polygon(data = world_map_subset, aes(x = long, y = lat, group = group)) + 
+  coord_fixed(1.3) +  
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.background = element_rect(fill = 'white', colour = NA)) +
+  geom_point(data = sites, aes(x = longitude, y = latitude), 
+             shape = 21, color = "black", fill = "red", size = 3, alpha = 0.8))
+  
+
 #### save plots ####
 
 ggsave("plots/hypothesis_plot.jpeg", plot = hypothesis_plot,
        width = 20, height = 25, units = "cm")
 
 ggsave("plots/tmp_plot.jpeg", plot = tmp_plot, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 ggsave("plots/lma_plot.jpeg", plot = lma_plot, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 ggsave("plots/narea_plot.jpeg", plot = narea_plot, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 ggsave("plots/narea_treemap.jpeg", plot = narea_treemap, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 # ggsave("plots/narea_plot_treemap.jpeg", plot = narea_plot_treemap, 
 #        width = 38, height = 18, units = "cm")
 
 ggsave("plots/npred_plot.jpeg", plot = npred_plot, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 ggsave("plots/narea_pred_treemap.jpeg", plot = narea_pred_treemap, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 
 ggsave("plots/live_mass_plot.jpeg", plot = live_mass_plot, 
-       width = 29, height = 18, units = "cm")
+       width = 30, height = 20, units = "cm")
 
 ggsave("plots/delta_live_mass_plot.jpeg", plot = delta_live_mass_plot, 
-       width = 60, height = 25, units = "cm")
+       width = 30, height = 20, units = "cm")
 
+ggsave("plots/map_plot.jpeg", plot = map_plot, 
+       width = 30, height = 15, units = "cm")
