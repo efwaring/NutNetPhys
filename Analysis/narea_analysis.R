@@ -140,6 +140,11 @@ leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp +
 summary(leafNarea_lmer) # N = 1,561
 Anova(leafNarea_lmer)
 
+cor(subset(leaf_chi_subset, logpar_per_leaf_area > 0)$logpar_per_leaf_area, 
+    subset(leaf_chi_subset, logpar_per_leaf_area > 0)$tmp)^2
+
+levels(as.factor(subset(leaf_chi_subset, logpar_per_leaf_area > 0)$site_code))
+
 # pwpm(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
 # cld(emmeans(leafNarea_lmer, ~Ntrt_fac*Ptrt_fac))
 
@@ -563,10 +568,19 @@ leaf_site$block_fac <- as.factor(leaf_site$block)
 # lai_model$p <- as.matrix(Anova(lai_lmer)[1:7, 3])
 # write.csv(lai_model, 'tables/lai_model.csv')
 
+leaf_site_sub = subset(leaf_site, site_code == "bldr.us" | site_code == "bogong.au" | 
+                         site_code == "burrawan.au" | site_code == "cbgb.us" | site_code == "comp.pt" | 
+                         site_code == "cowi.ca" | site_code == "elliot.us" | 
+                         site_code == "gilb.za" | site_code == "hopl.us" | site_code == "lancaster.uk" | 
+                         site_code == "mcla.us" | site_code == "mtca.au" | 
+                         site_code == "sage.us" | site_code == "sgs.us" | 
+                         site_code == "sier.us" | site_code == "smith.us" | 
+                         site_code == "summ.za" | site_code == "unc.us" | site_code == "valm.ch")
+
 ### linear mixed effects model for mean live mass
 live_mass_lmer <- lmer(log(live_mass_mean) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac +
                         (1|site_code) + (1|site_code:block), 
-                      data = leaf_site)
+                      data = leaf_site_sub)
 # plot(resid(live_mass_lmer) ~ fitted(live_mass_lmer))
 summary(live_mass_lmer) # N = 763
 Anova(live_mass_lmer)
@@ -577,6 +591,11 @@ Anova(live_mass_lmer)
 (summary(emmeans(live_mass_lmer, ~Ntrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2])/
   summary(emmeans(live_mass_lmer, ~Ntrt_fac))[1,2]
 # 0.0411
+
+# percentage increase of live mass in plots receiving P compared to plots not receiving P
+(summary(emmeans(live_mass_lmer, ~Ptrt_fac))[2,2] - summary(emmeans(live_mass_lmer, ~Ptrt_fac))[1,2])/
+  summary(emmeans(live_mass_lmer, ~Ptrt_fac))[1,2]
+# 0.0424
 
 # percentage increase of live mass in plots receiving N and K compared to plots receiving K but not N
 (summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[4,3] - summary(emmeans(live_mass_lmer, ~Ntrt_fac*Ktrt_fac))[3,3])/
@@ -622,7 +641,7 @@ live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
           panel.grid.major = element_line(colour = "white")) +
     geom_boxplot(outlier.color = NA) +
     scale_fill_manual(values = c("gray40", "burlywood1"), labels = c("Ambient", "Added N")) +
-    geom_text(data = live_mass_letters, aes(x = x, y = y, label = letter), size = 6) +
+    # geom_text(data = live_mass_letters, aes(x = x, y = y, label = letter), size = 6) +
     scale_y_continuous(limits = c(3.5, 8)) +
     scale_x_discrete(limits = c('-P, -K', '-P, +K', '+P, -K', '+P, +K')) +
     labs(fill = "Soil N") +
@@ -734,6 +753,19 @@ delta_live_mass_lm <- lmer(delta_narea ~
 summary(delta_live_mass_lm) # N = 328
 Anova(delta_live_mass_lm)
 
+hist(delta_live_mass_data$delta_lma)
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass'))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = -50)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+         at = list(delta_lma = -25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 0)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 25)))
+test(emtrends(delta_live_mass_lm, ~delta_live_mass, var = 'delta_live_mass', 
+              at = list(delta_lma = 50)))
+
 delta_live_mass_model <- data.frame(Var = c('delta AGB', 'Soil P', 'Soil K',  
                                             'delta LMA', 'Soil P x Soil K',
                                             'delta AGB x delta LMA')) 
@@ -742,7 +774,7 @@ delta_live_mass_model$df <- as.matrix(Anova(delta_live_mass_lm)[1:6, 2])
 delta_live_mass_model$p <- as.matrix(Anova(delta_live_mass_lm)[1:6, 3])
 write.csv(delta_live_mass_model, 'tables/delta_live_mass_model.csv')
 
-ggplot(data = delta_live_mass_plot_data, aes(x = delta_lma, y = delta_narea)) + geom_point()
+# ggplot(data = delta_live_mass_plot_data, aes(x = delta_lma, y = delta_narea)) + geom_point()
 
 ### make figures
 ## dataset
@@ -797,18 +829,18 @@ colnames(delta_live_mass_plot_trend_df) <- c('delta_live_mass',
           legend.background = element_rect(fill = 'white', colour = 'black'),
           panel.background = element_rect(fill = 'white', colour = 'black'),
           panel.grid.major = element_line(colour = "grey")) +
-    geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 0.8) +
-    scale_size_continuous(range = c(1, 5)) +
+    geom_point(shape = 21, colour = 'black', stroke = 0.5, alpha = 1) +
+    scale_size_continuous(range = c(0.5, 3)) +
     scale_fill_gradient(low = 'grey80', high = 'grey0') +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_lowlma, fill = NULL), 
-              size = 7, colour = 'grey60', alpha = 1, lty = 2) +
+              size = 4, colour = 'grey60', alpha = 1, lty = 2) +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_midlma, fill = NULL), 
-              size = 7, colour = 'grey40', alpha = 1, lty = 2) +
+              size = 4, colour = 'grey40', alpha = 1, lty = 2) +
     geom_line(data = delta_live_mass_plot_trend_df, 
               aes(x = delta_live_mass, y = delta_narea_highlma, fill = NULL), 
-              size = 7, colour = 'grey20', alpha = 1, lty = 2) +
+              size = 4, colour = 'grey20', alpha = 1, lty = 1) +
     labs(fill = expression('∆' * italic('M')['area'] * ' (%)')) +
     guides(size = "none") +
     ylab(expression('∆' * italic('N')['area'] * ' (%)')) +
@@ -874,19 +906,20 @@ library(mapdata)
 
 site_data <- read.csv("../Data/sites-19-November-2021.csv")
 sites <- site_data %>% 
-  subset(site_code == "bldr.us" | site_code == "bnch.us" | site_code == "bogong.au" | 
+  subset(site_code == "bldr.us" | site_code == "bogong.au" | 
            site_code == "burrawan.au" | site_code == "cbgb.us" | site_code == "comp.pt" | 
-           site_code == "cowi.ca" | site_code == "elliot.us" | site_code == "frue.ch" | 
-           site_code == "gilb.za" | site_code == "hopl.us" | site_code == "jena.de" | 
-           site_code == "kiny.au" | site_code == "konz.us" | site_code == "lancaster.uk" | 
-           site_code == "look.us" | site_code == "mcla.us" | site_code == "mtca.au" | 
-           site_code == "sage.us" | site_code == "saline.us" | site_code == "sgs.us" | 
-           site_code == "shps.us" | site_code == "sier.us" | site_code == "smith.us" | 
+           site_code == "cowi.ca" | site_code == "elliot.us" | 
+           site_code == "gilb.za" | site_code == "hopl.us" | site_code == "lancaster.uk" | 
+           site_code == "mcla.us" | site_code == "mtca.au" | 
+           site_code == "sage.us" | site_code == "sgs.us" | 
+           site_code == "sier.us" | site_code == "smith.us" | 
            site_code == "summ.za" | site_code == "unc.us" | site_code == "valm.ch")
 
 world_map <- map_data("world")
 world_map_subset <- subset(world_map, region != "Antarctica")
-(map_plot <- ggplot() + geom_polygon(data = world_map_subset, aes(x = long, y = lat, group = group)) + 
+(map_plot <- ggplot() + geom_polygon(data = world_map_subset, 
+                                     aes(x = long, y = lat, group = group),
+                                     fill = 'white', color = 'gray35') + 
   coord_fixed(1.3) +  
   theme(axis.title.x = element_blank(),
         axis.title.y = element_blank(),
@@ -896,7 +929,9 @@ world_map_subset <- subset(world_map, region != "Antarctica")
         axis.ticks.y = element_blank(),
         panel.background = element_rect(fill = 'white', colour = NA)) +
   geom_point(data = sites, aes(x = longitude, y = latitude), 
-             shape = 21, color = "black", fill = "red", size = 3, alpha = 0.8))
+             shape = 16, color = "red", size = 1) +
+  geom_point(data = sites, aes(x = longitude, y = latitude), 
+             shape = 1, color = "red", fill = NA, size = 3, stroke = 1))
   
 
 #### save plots ####
