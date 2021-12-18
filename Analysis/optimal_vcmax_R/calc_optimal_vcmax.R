@@ -88,8 +88,6 @@ calc_optimal_vcmax <- function(pathway = "C3", tg_c = 25, z = 0, vpdo = 1, cao =
 
     # Coordination and least-cost hypothesis model terms
     given_chi <- given_chi(chi) # returns yes or no based on presence of chi value
-    # fill in missing chi values if chi is known
-    # chi_known <- ifelse(!is.na(chi), chi, calc_chi(temp = tg_c, z = z, vpdo = vpdo, cao = cao))
     # calculate chi if unknown
     chi <- return_chi(given_chi = given_chi, chi = chi, temp = tg_c, z = z, vpdo = vpdo, cao = cao, beta = beta)
     ci <- chi * ca # Pa
@@ -130,8 +128,6 @@ calc_optimal_vcmax <- function(pathway = "C3", tg_c = 25, z = 0, vpdo = 1, cao =
       
       # Coordination and least-cost hypothesis model terms
       given_chi <- given_chi(chi) # returns yes or no based on presence of chi value
-      # fill in missing chi values if chi is known
-      # chi_known <- ifelse(!is.na(chi), chi, calc_chi_c4(ca = cao, temp = tg_c, vpd = vpdo, z = z))
       # calculate chi if unknown
       chi <- return_chi_c4(given_chi = given_chi, chi = chi, ca = cao, temp = tg_c, vpd = vpdo, z = z)
       ci <- ca * chi
@@ -182,8 +178,6 @@ calc_optimal_vcmax <- function(pathway = "C3", tg_c = 25, z = 0, vpdo = 1, cao =
   
   # LMA
   given_lma <- ifelse(!is.na(lma), "yes", "no") # returns yes or no based on presence of LMA value
-  # fill in missing LMA values if LMA is known
-  # lma_known <- ifelse(!is.na(lma), lma, calc_lma(f = f, par = paro, temperature = tg_c, vpd_kpa = vpdo, z = z, co2 = cao))
   # calculate LMA if unknown
   lma <- return_lma(given_lma, lma, f = f, par = paro, temperature = tg_c, vpd_kpa = vpdo, z = z, co2 = cao)
   

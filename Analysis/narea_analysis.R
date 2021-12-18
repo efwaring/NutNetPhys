@@ -251,9 +251,19 @@ leafNarea_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
                                       '-P, +K', '-P, +K', '+P, +K', '+P, +K'),
                           Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
                           y = c(3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5), 
-                          letter = c('a', 'b', 'a', 'b', 
-                                     'a', 'b', 'a', 'b'))
+                          group = c(cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[1, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[2, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[3, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[4, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[5, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[6, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[7, 9],
+                                    cld(emmeans(leafNarea_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[8, 9]))
 leafNarea_letters$Ntrt_fac <- as.factor(leafNarea_letters$Ntrt_fac)
+leafNarea_letters$letter[leafNarea_letters$group == " 1  "] <- "a"
+leafNarea_letters$letter[leafNarea_letters$group == " 12 "] <- "ab"
+leafNarea_letters$letter[leafNarea_letters$group == "  2 "] <- "b"
+leafNarea_letters$letter[leafNarea_letters$group == "   3"] <- "c"
 
 (narea_plot <- ggplot(data = leaf_chi_subset, 
                          aes(x = PKgroup, y = log(narea), fill = Ntrt_fac)) +
@@ -518,12 +528,8 @@ narea_tm_pred$name <- c('italic(N)[photo]', 'italic(N)[structure]', 'Soil~N', 'S
               aes(x = x, y = y), parse = T, size = 8) +
     geom_text(data = filter(narea_tm_pred, Factor == 'Soil Interactions'),
               aes(x = x, y = y), parse = T, size = 7) +
-    ggrepel::geom_text_repel(data = filter(narea_tm_pred, Factor == 'C3/C4'), 
-                             aes(x = x, y = y), parse = T, size = 4, 
-                             direction = "y", xlim = c(1.01, NA)) +
-    scale_x_continuous(limits = c(0, 1.1), expand = c(0, 0)) +
-    scale_y_continuous(expand = c(0, 0)))
-
+    geom_text(data = filter(narea_tm_pred, Factor == 'C3/C4'),
+              aes(x = x, y = y), parse = T, size = 6))
 ### table with model results
 Narea_pred_model <- data.frame(Var = c('ln Nphoto', 'ln Nstructure', 'Soil N', 'Soil P', 
                                        'Soil K+µ', 'N fixer', 'C3/C4', 'Soil N x Soil P', 
@@ -617,15 +623,25 @@ leaf_site$PKgroup[leaf_site$Ptrt_fac == '0' & leaf_site$Ktrt_fac == '1'] <- '-P,
 leaf_site$PKgroup[leaf_site$Ptrt_fac == '1' & leaf_site$Ktrt_fac == '1'] <- '+P, +K'
 
 ### make figures
-# cld.emmGrid(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))
 live_mass_letters <- data.frame(x = c(0.8, 1.2, 1.8, 2.2, 2.8, 3.2, 3.8, 4.2),
-                                PKgroup = c('-P, -K', '-P, -K', '-P, +K', '-P, +K',
-                                            '+P, -K', '+P, -K', '+P, +K', '+P, +K'),
-                                Ntrt_fac = c(0, 1, 0, 1, 0, 1, 0, 1),
+                                PKgroup = c('-P, +K', '-P, -K', '-P, -K', '+P, +K',
+                                            '+P, -K', '-P, +K', '+P, -K', '+P, +K'),
+                                Ntrt_fac = c(0, 0, 1, 0, 0, 1, 1, 1),
                                 y = c(7.8, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8), 
-                                letter = c("ab", "abc", "a", "c", 
-                                           "bc", "cd", "bc", "d"))
+                                group = c(cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[1, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[2, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[3, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[4, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[5, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[6, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[7, 9],
+                                          cld(emmeans(live_mass_lmer, ~Ntrt_fac * Ptrt_fac * Ktrt_fac))[8, 9]))
 live_mass_letters$Ntrt_fac <- as.factor(live_mass_letters$Ntrt_fac)
+live_mass_letters$letter[live_mass_letters$group == " 1  "] <- "a"
+live_mass_letters$letter[live_mass_letters$group == " 12 "] <- "ab"
+live_mass_letters$letter[live_mass_letters$group == "  2 "] <- "b"
+live_mass_letters$letter[live_mass_letters$group == "  23"] <- "bc"
+live_mass_letters$letter[live_mass_letters$group == "   3"] <- "c"
 
 (live_mass_plot <- ggplot(data = leaf_site, 
                           aes(x = PKgroup, y = log(live_mass_mean), fill = Ntrt_fac)) +
@@ -963,3 +979,4 @@ ggsave("plots/delta_live_mass_plot.jpeg", plot = delta_live_mass_plot,
 
 ggsave("plots/map_plot.jpeg", plot = map_plot, 
        width = 30, height = 15, units = "cm")
+
