@@ -14,3 +14,15 @@
 - more discussion of N fixers and C4/C3 in intro (or methods)
 
 - why both 19 and 26 sites mentioned? check with Risa
+
+- mention how isotopes were measured
+
+- remove light conversion because tall/dominant plants? I dunno
+
+## new setup (ugh!)
+
+### goals
+1. Quantify the impact of soil nitrogen on carbon costs to acquire N (β) across a climate gradient.
+	- should we include soil water?
+2. Assess the impacts of biomass responses on this response.
+3. Assess the connection between change in β and changes in χ and Nmass.

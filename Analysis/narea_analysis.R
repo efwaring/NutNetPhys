@@ -2,8 +2,9 @@
 ## generally follows the analysis structure of Dong et al. (2017) Biogeosciences
 ## but includes the addition of soil N as a predictor
 
-
+############################
 #### load packages ####
+############################
 library(tidyverse)
 library(lme4)
 library(car)
@@ -15,6 +16,7 @@ library(patchwork)
 library(multcomp)
 library(ggplot2)
 
+############################
 #### load functions ####
 ### functions to calculate vcmax and jmax 
 source('optimal_vcmax_R/calc_optimal_vcmax.R')
@@ -102,8 +104,8 @@ hypothesis_data$Narea <- as.numeric(as.character(hypothesis_data$Narea))
 #### soil N effects on leaf traits (Narea and chi) ####
 ### load data
 leaf <- read.csv('../Data/processed/traits_v2.csv')
-sites_in_study <- levels(as.factor(leaf$site_code))
-write.csv(sites_in_study, 'sites_in_study/sites_in_study.csv', row.names = F)
+sites_in_study <- levels(as.factor(leaf$site_code)) # 27?
+# write.csv(sites_in_study, 'sites_in_study/sites_in_study.csv', row.names = F)
 
 ## turn treatment numbers into factors
 leaf$Ntrt_fac <- as.factor(leaf$Ntrt)
@@ -134,6 +136,7 @@ leaf$logpar <- log(leaf$par)
 leaf$logpar_per_leaf_area <- log(leaf$par_per_leaf_area)
 leaf$logvpd <- log(leaf$vpd)
 leaf$loglma <- log(leaf$lma)
+
 leafNarea_lmer <- lmer(log(narea) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + tmp + 
                          logpar_per_leaf_area + loglma + chi + Nfix + photosynthetic_pathway +
                         (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
