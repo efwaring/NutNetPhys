@@ -29,7 +29,7 @@ traits$Ptrt_fac = as.factor(traits$Ptrt)
 traits$Ktrt_fac = as.factor(traits$Ktrt)
 
 ## add in photosynthetic pathway information
-levels(traits$Family) # check Amaranthaceae, Asteraceae, Boraginaceae, Caryophyllaceae, Cyperaceae, Euphorbiaceae,
+levels(as.factor(traits$Family)) # check Amaranthaceae, Asteraceae, Boraginaceae, Caryophyllaceae, Cyperaceae, Euphorbiaceae,
 # Polygonaceae, Poaceae, Scrophulariaceae
 # only one!
 # C4
@@ -55,7 +55,7 @@ traits$narea = (traits$leaf_pct_N / 100) * (traits$lma)
 traits$lai = -log(traits$Ground_PAR / traits$Ambient_PAR) / 0.86 # from: http://manuals.decagon.com/Manuals/10242_Accupar%20LP80_Web.pdf page 41
 # hist(traits$lai)
 ### calculate par per leaf area to assume par absorbed is reduced in dense canopies
-traits$par_per_leaf_area = traits$par * ((1 - exp(-0.5 * traits$lai)) / traits$lai) # from Dong et al. (2007) eqn 2
+traits$par_per_leaf_area = traits$par2_gs * ((1 - exp(-0.5 * traits$lai)) / traits$lai) # from Dong et al. (2007) eqn 2
 # hist(traits$par_per_leaf_area)
 # hist(traits$Ambient_PAR)
 # hist(traits$par)

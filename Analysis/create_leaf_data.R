@@ -168,4 +168,13 @@ for (i in 1:length(code_taxon_data)){
 
 leaf_core_spei_info = cbind(leaf_core_spei, n_info)
 
-# write.csv(leaf_core_spei_info, "../Data/leaf_plus_v2.csv")
+#############################
+## add in new growing season climate data (March 11, 2022)
+#############################
+
+gs_climate <- read.csv('growing_season_data/cru_gs_climate.csv')
+
+leaf_core_spei_info_gsclimate <- left_join(leaf_core_spei_info, gs_climate, by = c("site_code"))
+
+
+# write.csv(leaf_core_spei_info_gsclimate, "../Data/leaf_plus_v2.csv")

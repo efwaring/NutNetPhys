@@ -70,7 +70,7 @@ calc.relip.boot.mm <- function(model,type = 'lmg') {
 
 ### leaf data
 leaf_raw <- read.csv('../Data/processed/traits_v2.csv')
-leaf = subset(leaf_raw, chi > 0.05 & chi < 0.95)
+leaf = leaf_raw
 
 leaf$Ntrt_fac <- as.factor(leaf$Ntrt)
 leaf$Ptrt_fac <- as.factor(leaf$Ptrt)
@@ -87,20 +87,20 @@ leaf$trt_fac <- as.factor(leaf$trt)
 leaf$fence <- 'no'
 leaf$fence[leaf$trt == 'Fence' | leaf$trt == 'NPK+Fence'] <- 'yes'
 
-leaf$logpar <- log(leaf$par)
+leaf$logpar <- log(leaf$par2_gs)
 leaf$logpar_per_leaf_area <- log(leaf$par_per_leaf_area)
-leaf$logvpd <- log(leaf$vpd)
+leaf$logvpd <- log(leaf$vpd2_gs)
 leaf$loglma <- log(leaf$lma)
 
-leaf$nstar <- calc_nstar(leaf$tmp, leaf$z)
-leaf$gammastar <- calc_gammastar_pa(leaf$tmp, leaf$z)
-leaf$km <- calc_km_pa(leaf$tmp, leaf$z)
-leaf$vpd_adj <- calc_vpd(leaf$tmp, leaf$z, leaf$vpd)
+leaf$nstar <- calc_nstar(leaf$tmp2_gs, leaf$z)
+leaf$gammastar <- calc_gammastar_pa(leaf$tmp2_gs, leaf$z)
+leaf$km <- calc_km_pa(leaf$tmp2_gs, leaf$z)
+leaf$vpd_adj <- calc_vpd(leaf$tmp2_gs, leaf$z, leaf$vpd2_gs)
 leaf$patm <- calc_patm(leaf$z)
 leaf$ca <- 400 * 1e-6 * leaf$patm
 Kp_25 <- 16 # Pa
 Ea_Kp <- 36300 # J mol^-1, for the Pa parameter ## Boyd et al 2015
-leaf$tmpK <- leaf$tmp + 273.15
+leaf$tmpK <- leaf$tmp2_gs + 273.15
 leaf$kp <- Kp_25 * exp((Ea_Kp * (leaf$tmpK - 298.15))/(298.15 * 8.3145 * leaf$tmpK))
 
 leaf$beta_num <- 1.6 * leaf$nstar * leaf$vpd_adj * 1000 * ((leaf$chi) ^ 2)
@@ -109,6 +109,9 @@ leaf$beta_denom[leaf$photosynthetic_pathway == 'C4'] <- ((1 - leaf$chi[leaf$phot
   (leaf$kp[leaf$photosynthetic_pathway == 'C4'] + leaf$gammastar[leaf$photosynthetic_pathway == 'C4'])
 
 leaf$beta <- leaf$beta_num / leaf$beta_denom
+
+## subset outliers
+leaf_sub <- subset(leaf, chi < 0.95 & beta < 2000 & chi > 0.45)
 
 # leaf$xi <- sqrt(leaf$beta * (leaf$km + leaf$gammastar) * (1/(1.6 * leaf$nstar)))
 # leaf$xi[leaf$photosynthetic_pathway == 'C4'] <- sqrt(leaf$beta[leaf$photosynthetic_pathway == 'C4'] * 
@@ -128,7 +131,7 @@ leaf$beta <- leaf$beta_num / leaf$beta_denom
 # plot(leaf$beta ~ leaf$chi)
 # hist(leaf$beta)
 
-leaf_n <- subset(leaf, trt == 'N' | trt == 'Control')
+leaf_n <- subset(leaf_sub, trt == 'N' | trt == 'Control')
 leaf_n$trt_fac
 
 ### calculate treatment type averages
@@ -139,7 +142,8 @@ leaf_site_N <- leaf_n %>%
            Taxon 
            # grass, Nfix, photosynthetic_pathway
   ) %>%
-  summarise_at(vars(narea, spp_lai, chi, spp_live_mass, spp_mass_N, max_cover, lma, p_pet, vpd, tmp,
+  summarise_at(vars(narea, spp_lai, chi, spp_live_mass, spp_mass_N, max_cover, lma, p_pet, 
+                    vpd2_gs, tmp2_gs, alpha,
                     Ambient_PAR, Ground_PAR, par_rat, beta),
                mean, na.rm = TRUE)
 
@@ -192,35 +196,47 @@ delta_beta_data <- subset(leaf_site_trt,
 ############################
 
 #### Hyp 1: soil N reduces beta, but this is reduced when water availability is low
-beta_lmer <- lmer(log(beta) ~ trt_fac * p_pet +
-                         # Nfix + photosynthetic_pathway +
+beta_lmer <- lmer(log(beta) ~ trt_fac + alpha +
+                         Nfix + # photosynthetic_pathway +
                          (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
                        data = leaf_n)
 plot(resid(beta_lmer) ~ fitted(beta_lmer))
-summary(beta_lmer) # N = 436
+summary(beta_lmer) # N = 
 Anova(beta_lmer, type = 'III')
 emmeans(beta_lmer, ~trt_fac)
-emmeans(beta_lmer, ~trt_fac, at = list(p_pet = 0.5))
-emmeans(beta_lmer, ~trt_fac, at = list(p_pet = 3.5))
+emtrends(beta_lmer, ~1, var = 'alpha')
+# emmeans(beta_lmer, ~trt_fac, at = list(alpha = 1.24))
+# emmeans(beta_lmer, ~trt_fac, at = list(alpha = 0.35))
 
-#### Hyp 1 supported, soil N reduces beta, but only when low water availability
+#### Hyp 1 supported, soil N reduces beta, but greater effect with lower water availability
 
-#### Hyp 2: the beta response is less negative when AGB increases
+#### Hyp 1b: the beta response is less negative when AGB increases
 hist(delta_beta_data$delta_beta)
 hist(delta_beta_data$delta_live_mass)
 hist(delta_beta_data$delta_lma)
-delta_beta_lmer <- lmer(delta_beta ~ delta_live_mass * p_pet.x +
+delta_beta_lmer <- lmer(delta_beta ~ delta_live_mass * alpha.x +
                           (1|Taxon) + (1|Taxon:site_code), data = delta_beta_data)
 plot(resid(delta_beta_lmer) ~ fitted(delta_beta_lmer))
 summary(delta_beta_lmer)
 Anova(delta_beta_lmer, type = 'III')
 emtrends(delta_beta_lmer, ~1, var = 'delta_live_mass')
-emtrends(delta_beta_lmer, ~1, var = 'p_pet.x')
+emtrends(delta_beta_lmer, ~1, var = 'alpha.x')
 
 plot(delta_beta_data$delta_beta ~ delta_beta_data$delta_live_mass)
 
-#### Hyp 2: no support that the AGB response matters
+#### Hyp 1b: no support that the AGB response matters
 
-#### check notes for next step!
+#### Hyp 2: chi is negatively related to soil N and vpd, positively related to soil water and T, and lower in C4
+chi_lmer <- lmer(log(chi) ~ trt_fac + alpha +
+                   photosynthetic_pathway +
+                   tmp2_gs + vpd2_gs +
+                   (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
+                 data = leaf_n)
+plot(resid(chi_lmer) ~ fitted(chi_lmer))
+summary(chi_lmer) # N = 
+Anova(chi_lmer, type = 'III')
+emmeans(chi_lmer, ~trt_fac) # negative effect
+emmeans(chi_lmer, ~photosynthetic_pathway) # lower in C4
+emtrends(chi_lmer, ~1, var = 'tmp2_gs') # positive
 
-
+#### Hyp 2: soil N (+), C4 (-), and T (+) confirmed...no impact of alpha or vpd
