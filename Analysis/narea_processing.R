@@ -16,7 +16,7 @@ library(ggplot2)
 # read in and modify foliar trait dataset (Jen Firn)
 #########################################
 ## load observational data
-traits = read.csv('../Data/leaf_plus_v2.csv')
+traits = read.csv('../Data/leaf_plus_v3.csv')
 head(traits)
 
 ## fiter by overlapping sites
@@ -121,7 +121,7 @@ biomass_nutrients_live_mean = summarise(biomass_nutrients_live_group,
 traits_w_cover_w_biomass_nut = left_join(traits_w_cover, biomass_nutrients_live_mean)
 traits_w_cover_w_biomass_nut$spp_mass_N = traits_w_cover_w_biomass_nut$spp_live_mass * (traits_w_cover_w_biomass_nut$pct_N_mean/100)
 
-# write.csv(traits_w_cover_w_biomass_nut, '../Data/processed/traits_v2.csv')
+# write.csv(traits_w_cover_w_biomass_nut, '../Data/processed/traits_v3.csv')
 
 traits_group_by_site = group_by(traits, 
                                     site_code, plot, block, trt, Ntrt, Ptrt, Ktrt)
@@ -138,4 +138,4 @@ traits_site = summarise(traits_group_by_site,
                             p_pet_mean = mean(p_pet, na.rm = T),
                             live_mass_mean = mean(live_mass, na.rm = T))
 
-# write.csv(traits_site, '../Data/processed/traits_site_v2.csv')
+# write.csv(traits_site, '../Data/processed/traits_site_v3.csv')

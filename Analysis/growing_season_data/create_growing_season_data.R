@@ -34,7 +34,7 @@ leaf_data_site_year_gs$start_yr_CRU_gs <- leaf_data_site_year_gs$end_yr_CRU_gs -
 leaf_data_site_year_gs[leaf_data_site_year_gs$site_code == 'gilb.za',]$start_mo_CRU_gs <- 10
 leaf_data_site_year_gs[leaf_data_site_year_gs$site_code == 'gilb.za',]$end_mo_CRU_gs <- 4
 leaf_data_site_year_gs[leaf_data_site_year_gs$site_code == 'summ.za',]$start_mo_CRU_gs <- 9
-leaf_data_site_year_gs[leaf_data_site_year_gs$site_code == 'summ.za',]$end_mo_CRU_gs <- 4
+leaf_data_site_year_gs[leaf_data_site_year_gs$site_code == 'summ.za',]$end_mo_CRU_gs <- 5
 
 ## fix 
 

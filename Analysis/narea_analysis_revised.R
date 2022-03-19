@@ -16,6 +16,7 @@ library(relaimpo)
 library(patchwork)
 library(multcomp)
 library(ggplot2)
+library(piecewiseSEM)
 
 ############################
 #### load functions ####
@@ -70,7 +71,7 @@ calc.relip.boot.mm <- function(model,type = 'lmg') {
 ############################
 
 ### leaf data
-leaf_raw <- read.csv('../Data/processed/traits_v2.csv')
+leaf_raw <- read.csv('../Data/processed/traits_v3.csv')
 leaf = leaf_raw
 
 leaf$Ntrt_fac <- as.factor(leaf$Ntrt)
@@ -87,10 +88,15 @@ colnames(gs_information)
 gs_length <- gs_information[,c(2, 20)]
 
 leaf <- left_join(leaf, gs_length)
+leaf$site_code[is.na(leaf$gs_len)]
+leaf$gs_len[leaf$site_code == 'gilb.za'] <- 6
+leaf$gs_len[leaf$site_code == 'summ.za'] <- 8
+
 leaf$gs_frac <- leaf$gs_len / 12
 
+
 ## remove c4 (not enough, only 18 out of 313 in final)
-leaf <- subset(leaf, photosynthetic_pathway == 'C3')
+# leaf <- subset(leaf, photosynthetic_pathway == 'C3')
 
 # leaf$tmp_scaled <- leaf$tmp - 25
 # 
@@ -141,20 +147,22 @@ lma_mad <- mad(leaf$lma, na.rm = T)
 narea_mad <- mad(leaf$narea, na.rm = T)
 
 #### remove values more than 3 MAD (VERY CONSERVATIVE: https://www.sciencedirect.com/science/article/pii/S0022103113000668)
-leaf_sub <- subset(leaf, beta < beta_median + 6 * beta_mad &
-                     beta > beta_median - 6 * beta_mad &
-                     nmass < nmass_median + 6 * nmass_mad &
-                     nmass > nmass_median - 6 * nmass_mad &
-                     lma < lma_median + 6 * lma_mad &
-                     lma > lma_median - 6 * lma_mad &
-                     chi < chi_median + 6 * chi_mad &
-                     chi > chi_median - 6 * chi_mad &
-                     narea < narea_median + 6 * narea_mad &
-                     narea > narea_median - 6 * narea_mad)
+# leaf_sub <- subset(leaf, beta < beta_median + 6 * beta_mad &
+#                      beta > beta_median - 6 * beta_mad &
+#                      nmass < nmass_median + 6 * nmass_mad &
+#                      nmass > nmass_median - 6 * nmass_mad &
+#                      lma < lma_median + 6 * lma_mad &
+#                      lma > lma_median - 6 * lma_mad &
+#                      chi < chi_median + 6 * chi_mad &
+#                      chi > chi_median - 6 * chi_mad &
+#                      narea < narea_median + 6 * narea_mad &
+#                      narea > narea_median - 6 * narea_mad)
 
 
 
-leaf_sub <- subset(leaf, chi < 0.95 & beta < 2000 & beta >1 & chi > 0.05 & lma < 1000 & lma > 10)
+# leaf_sub <- subset(leaf, chi < 0.95 & beta < 2000 & beta >1 & chi > 0.05)
+leaf_sub <- subset(leaf, chi < 0.95 & chi > 0.05)
+leaf_sub <- leaf_sub[!(leaf_sub$photosynthetic_pathway == "C3" & leaf_sub$chi < 0.2),]
 
 nrow(leaf_sub)
 
@@ -176,14 +184,15 @@ nrow(leaf_sub)
 # plot(leaf$beta ~ leaf$chi)
 # hist(leaf$beta)
 
-leaf_n <- subset(leaf_sub, trt == 'N' | trt == 'Control')
+leaf_n <- leaf_sub
+# leaf_n <- subset(leaf_sub, trt == 'N' | trt == 'Control')
 # leaf_n$trt_fac
 
 nrow(leaf_n)
 
 ### calculate treatment type averages
 leaf_site_N <- leaf_n %>%
-  group_by(site_code, Ntrt_fac,
+  group_by(site_code, Ntrt_fac, Ptrt_fac, Ktrt_fac,
            block_fac, 
            trt_fac, trt
            # Taxon 
@@ -233,10 +242,10 @@ delta_live_mass_mad <- mad(leaf_site_trt$delta_live_mass, na.rm = T)
 delta_beta_mad <- mad(leaf_site_trt$delta_beta, na.rm = T)
 
 delta_beta_data <- subset(leaf_site_trt,
-                              delta_beta < delta_beta_median + 8 * delta_beta_mad &
-                              delta_beta > delta_beta_median - 8 * delta_beta_mad &
-                              delta_live_mass < delta_live_mass_median + 8 * delta_live_mass_mad &
-                              delta_live_mass > delta_live_mass_median - 8 * delta_live_mass_mad)
+                              delta_beta < delta_beta_median + 3 * delta_beta_mad &
+                              delta_beta > delta_beta_median - 3 * delta_beta_mad &
+                              delta_live_mass < delta_live_mass_median + 3 * delta_live_mass_mad &
+                              delta_live_mass > delta_live_mass_median - 3 * delta_live_mass_mad)
 
 # delta_beta_data <- leaf_site_trt
 
@@ -245,20 +254,23 @@ delta_beta_data <- subset(leaf_site_trt,
 ############################
 
 #### Hyp 1: soil N reduces beta, water availability increases beta, Nfix increases beta
-beta_lmer <- lmer(log(beta) ~ trt_fac + alpha +
-                         Nfix + # photosynthetic_pathway +
+beta_lmer <- lmer(log(beta) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + alpha +
+                         Nfix + photosynthetic_pathway +
                          (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
                        data = leaf_n)
 plot(resid(beta_lmer) ~ fitted(beta_lmer))
 summary(beta_lmer) # N = 
+rsquared(beta_lmer)
 Anova(beta_lmer, type = 'III')
 beta_mfx <- marginaleffects(beta_lmer)
 summary(beta_mfx)
-emmeans(beta_lmer, ~trt_fac)
-beta_change <- ((summary(emmeans(beta_lmer, ~trt_fac))[2, 2] - summary(emmeans(beta_lmer, ~trt_fac))[1, 2])/
-  summary(emmeans(beta_lmer, ~trt_fac))[1, 2]) * 100
+beta_lmer_Ntrt_emmeans <- summary(emmeans(beta_lmer, ~Ntrt_fac))
+# emmeans(beta_lmer, ~Nfix)
+emmeans(beta_lmer, ~photosynthetic_pathway)
+beta_change <- ((exp(beta_lmer_Ntrt_emmeans[2, 2]) - exp(beta_lmer_Ntrt_emmeans[1, 2]))/
+  exp(beta_lmer_Ntrt_emmeans[1, 2])) * 100
 
-#### H1 support: Soil N reduces beta
+#### H1 support: Soil N reduces beta, C4 reduces beta
 
 #### Hyp 1b: the beta response is less negative when AGB increases
 hist(delta_beta_data$delta_beta)
@@ -273,87 +285,95 @@ delta_beta_lmer <- lmer(delta_beta ~ delta_live_mass +
                           # (1|site_code), data = delta_beta_data)
 plot(resid(delta_beta_lmer) ~ fitted(delta_beta_lmer))
 summary(delta_beta_lmer)
+rsquared(delta_beta_lmer)
 Anova(delta_beta_lmer, type = 'III')
 delta_beta_mfx <- marginaleffects(delta_beta_lmer)
 summary(delta_beta_mfx)
 test(emtrends(delta_beta_lmer, ~1, var = 'delta_live_mass'))
 
 plot(delta_beta_data$delta_beta ~ delta_beta_data$delta_live_mass)
-plot(log(delta_beta_data$delta_beta + 100) ~ log(delta_beta_data$delta_live_mass + 100))
+# plot(log(delta_beta_data$delta_beta + 100) ~ log(delta_beta_data$delta_live_mass + 100))
 
-#### Hyp 1b: no support that the AGB response matters
+#### Hyp 1b: support that the AGB response matters (lowers the beta response)
 
 #### Hyp 2: chi is negatively related to soil N and vpd, positively related to soil water and T, and lower in C4
 ##### note no hypothesized effcect of Nfix as this didn't come out in the beta impacts
-chi_lmer <- lmer(logit(chi) ~ trt_fac + alpha +
-                   Nfix + # photosynthetic_pathway +
+chi_lmer <- lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + alpha +
+                   Nfix + photosynthetic_pathway +
                    tmp2_gs + vpd2_gs +
-                   (1|Taxon) + (1|Taxon:site_code) + (1|Taxon:site_code:block_fac), 
+                   (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
                  data = leaf_n)
 plot(resid(chi_lmer) ~ fitted(chi_lmer))
 summary(chi_lmer) # N = 
+rsquared(chi_lmer)
 Anova(chi_lmer, type = 'III')
 chi_mfx <- marginaleffects(chi_lmer)
 summary(chi_mfx)
-emmeans(chi_lmer, ~trt_fac) # negative effect
-emmeans(chi_lmer, ~photosynthetic_pathway) # lower in C4
-emtrends(chi_lmer, ~1, var = 'tmp2_gs') # positive
+# emmeans(chi_lmer, ~trt_fac) # negative effect
+# emmeans(chi_lmer, ~photosynthetic_pathway) # lower in C4
+# emtrends(chi_lmer, ~1, var = 'tmp2_gs') # positive
 
-#### Hyp 2: soil N (-) and T (+) confirmed...no impact of alpha or vpd
+#### Hyp 2: soil N (-), alpha (+), and C4 (-) confirmed...no impact of Nfix, T, or vpd
 
 #### Hyp 3: Nmass positively related to light, vpd, soil N, C4, and Nfix
 #### negatively related to temperature and soil water
-nmass_lmer <- lmer(log(nmass) ~ trt_fac + alpha + 
-                     Nfix + #photosynthetic_pathway +
-                   tmp2_gs + vpd2_gs +
-                     par2_gs +
-                   (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
-                 data = leaf_n)
-plot(resid(nmass_lmer) ~ fitted(nmass_lmer))
-summary(nmass_lmer) # N = 
-Anova(nmass_lmer, type = 'III')
-nmass_mfx <- marginaleffects(nmass_lmer)
-summary(nmass_mfx)
+# nmass_lmer <- lmer(log(nmass) ~ trt_fac + alpha + 
+#                      Nfix + #photosynthetic_pathway +
+#                    tmp2_gs + vpd2_gs +
+#                      par2_gs +
+#                    (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
+#                  data = leaf_n)
+# plot(resid(nmass_lmer) ~ fitted(nmass_lmer))
+# summary(nmass_lmer) # N = 
+# Anova(nmass_lmer, type = 'III')
+# nmass_mfx <- marginaleffects(nmass_lmer)
+# summary(nmass_mfx)
 
 #### Hyp 3: soil N (+), light (+), Nfix (+) confirmed
 #### no temperature vpd or alpha effect
 
 #### Hyp 4: Marea positively related to light
 #### negatively related to temperature
-marea_lmer <- lmer(log(lma) ~ tmp2_gs + par2_gs +
-                     (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
-                   data = leaf_n)
-plot(resid(marea_lmer) ~ fitted(marea_lmer))
-summary(marea_lmer) # N = 
-Anova(marea_lmer, type = 'III')
-marea_mfx <- marginaleffects(marea_lmer)
-summary(marea_mfx)
+# marea_lmer <- lmer(log(lma) ~ tmp2_gs + par2_gs +
+#                      (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
+#                    data = leaf_n)
+# plot(resid(marea_lmer) ~ fitted(marea_lmer))
+# summary(marea_lmer) # N = 
+# Anova(marea_lmer, type = 'III')
+# marea_mfx <- marginaleffects(marea_lmer)
+# summary(marea_mfx)
 
 #### Hyp 4: no effects, so we should expect same impact on Nmass as to Narea
 
 #### Hyp 5: Narea positively related to light, vpd, soil N, C4, and Nfix
 #### negatively related to temperature and soil water
-narea_lmer <- lmer(log(narea) ~ trt_fac + alpha + 
-                     Nfix + #photosynthetic_pathway +
-                     tmp2_gs + vpd2_gs +
-                     par2_gs +
-                     (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
-                   data = leaf_n)
-plot(resid(narea_lmer) ~ fitted(narea_lmer))
-summary(narea_lmer) # N = 
-Anova(narea_lmer, type = 'III')
-narea_mfx <- marginaleffects(narea_lmer)
-summary(narea_mfx)
+# narea_lmer <- lmer(log(narea) ~ trt_fac + alpha + 
+#                      Nfix + #photosynthetic_pathway +
+#                      tmp2_gs + vpd2_gs +
+#                      par2_gs +
+#                      (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
+#                    data = leaf_n)
+# plot(resid(narea_lmer) ~ fitted(narea_lmer))
+# summary(narea_lmer) # N = 
+# Anova(narea_lmer, type = 'III')
+# narea_mfx <- marginaleffects(narea_lmer)
+# summary(narea_mfx)
 
 #### Hyp 5: only a positive soil N effect, but others washed out
 
-#### Hyp 6: we can estimate leaf N from optimality
-beta_change
-leaf_n$beta_model[leaf_n$trt_fac == 'Control'] <- mean(leaf_n$beta[leaf_n$trt_fac == 'Control'], na.rm = T)
-leaf_n$beta_model[leaf_n$trt_fac == 'N'] <- 146 * ((100 + beta_change) / 100)
-leaf_n$beta_average <- mean(leaf_n$beta[leaf_n$trt_fac == 'Control'], na.rm = T)
+#### Hyp 6: we can estimate leaf chi from optimality
+beta_values <- summary(emmeans(beta_lmer, ~ Ntrt_fac * photosynthetic_pathway))
+beta_lowN_c3 <- exp(beta_values[1, 3])
+beta_highN_c3 <- exp(beta_values[2, 3])
+beta_lowN_c4 <- exp(beta_values[3, 3])
+beta_highN_c4 <- exp(beta_values[4, 3])
+leaf_n$beta_model[leaf_n$Ntrt_fac == '0' & leaf_n$photosynthetic_pathway == 'C3'] <- beta_lowN_c3
+leaf_n$beta_model[leaf_n$Ntrt_fac == '0' & leaf_n$photosynthetic_pathway == 'C4'] <- beta_lowN_c4
+leaf_n$beta_model[leaf_n$Ntrt_fac == '1' & leaf_n$photosynthetic_pathway == 'C3'] <- beta_highN_c3
+leaf_n$beta_model[leaf_n$Ntrt_fac == '1' & leaf_n$photosynthetic_pathway == 'C4'] <- beta_highN_c4
+leaf_n$beta_average <- mean(leaf_n$beta, na.rm = T)
 
-pred <- calc_optimal_vcmax(pathway = "C3",
+pred_c3 <- calc_optimal_vcmax(pathway = "C3",
                            tg_c = leaf_n$tmp2_gs, 
                            paro = leaf_n$par2_gs, 
                            cao = 400, 
@@ -363,19 +383,89 @@ pred <- calc_optimal_vcmax(pathway = "C3",
                            f = leaf_n$gs_frac,
                            beta = leaf_n$beta_average)
 
+pred_c4 <- calc_optimal_vcmax(pathway = "C4",
+                              tg_c = leaf_n$tmp2_gs, 
+                              paro = leaf_n$par2_gs, 
+                              cao = 400, 
+                              vpdo = leaf_n$vpd2_gs, 
+                              z = leaf_n$z,
+                              q0_resp = "no",
+                              f = leaf_n$gs_frac,
+                              beta = leaf_n$beta_average)
+
 ## add model results to leaf dataset
-leaf_n$seq <- c(1:nrow(leaf_n))
-pred$seq <- c(1:nrow(leaf_n))
-leaf_n_pred <- left_join(leaf_n, pred, by = "seq")
-head(leaf_n_pred)
+pred_c3$photosynthetic_pathway <- leaf_n$photosynthetic_pathway
+pred_c3$chi_pred <- pred_c3$chi
+pred_c3$chi_pred[pred_c3$photosynthetic_pathway == 'C4'] <- 0
+pred_c4$photosynthetic_pathway <- leaf_n$photosynthetic_pathway
+pred_c4$chi_pred <- pred_c4$chi
+pred_c4$chi_pred[pred_c3$photosynthetic_pathway == 'C3'] <- 0
+
+leaf_n$chi_pred <- pred_c3$chi_pred + pred_c4$chi_pred
 
 ## predicting chi from optimality
-chi_pred_lm <- lm(chi.x ~ chi.y + trt_fac, data = leaf_n_pred)
+chi_pred_lm <- lm(chi ~ chi_pred + Ntrt_fac, data = leaf_n)
 plot(resid(chi_pred_lm) ~ fitted(chi_pred_lm))
 summary(chi_pred_lm) # N = 
 Anova(chi_pred_lm, type = 'III')
 chi_mfx <- marginaleffects(chi_pred_lm)
 summary(chi_mfx)
+
+plot(chi ~ chi_pred, data = leaf_n)
+
+## now do the same with the beta adjustments
+pred_c3_beta <- calc_optimal_vcmax(pathway = "C3",
+                              tg_c = leaf_n$tmp2_gs, 
+                              paro = leaf_n$par2_gs, 
+                              cao = 400, 
+                              vpdo = leaf_n$vpd2_gs, 
+                              z = leaf_n$z,
+                              q0_resp = "no",
+                              f = leaf_n$gs_frac,
+                              beta = leaf_n$beta_model)
+
+pred_c4_beta <- calc_optimal_vcmax(pathway = "C4",
+                              tg_c = leaf_n$tmp2_gs, 
+                              paro = leaf_n$par2_gs, 
+                              cao = 400, 
+                              vpdo = leaf_n$vpd2_gs, 
+                              z = leaf_n$z,
+                              q0_resp = "no",
+                              f = leaf_n$gs_frac,
+                              beta = leaf_n$beta_model)
+
+## add model results to leaf dataset
+pred_c3_beta$photosynthetic_pathway <- leaf_n$photosynthetic_pathway
+pred_c3_beta$chi_pred_beta <- pred_c3_beta$chi
+pred_c3_beta$chi_pred_beta[pred_c3_beta$photosynthetic_pathway == 'C4'] <- 0
+pred_c4_beta$photosynthetic_pathway <- leaf_n$photosynthetic_pathway
+pred_c4_beta$chi_pred_beta <- pred_c4_beta$chi
+pred_c4_beta$chi_pred_beta[pred_c3_beta$photosynthetic_pathway == 'C3'] <- 0
+
+leaf_n$chi_pred_beta <- pred_c3_beta$chi_pred_beta + pred_c4_beta$chi_pred_beta
+hist(leaf_n$chi_pred_beta)
+hist(leaf_n$chi_pred)
+
+## predicting chi from optimality
+chi_pred_beta_lm <- lm(chi ~ chi_pred_beta, data = leaf_n)
+plot(resid(chi_pred_beta_lm) ~ fitted(chi_pred_beta_lm))
+summary(chi_pred_beta_lm) # N = 
+Anova(chi_pred_beta_lm, type = 'III')
+chi_beta_mfx <- marginaleffects(chi_pred_beta_lm)
+summary(chi_beta_mfx)
+
+plot(chi ~ chi_pred_beta, data = leaf_n)
+abline(0,1)
+
+
+
+
+
+
+
+
+
+
 
 ## predicting nmass from optimality
 leaf_n_pred$nmass.y <- (leaf_n_pred$nall / leaf_n_pred$lma.y)*100
