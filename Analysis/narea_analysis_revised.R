@@ -8,15 +8,16 @@
 library(tidyverse)
 library(lme4)
 library(car)
-library(r2glmm)
-library(treemapify)
+# library(r2glmm)
+# library(treemapify)
 library(marginaleffects)
 library(emmeans)
-library(relaimpo)
-library(patchwork)
-library(multcomp)
-library(ggplot2)
+# library(relaimpo)
+# library(patchwork)
+# library(multcomp)
+# library(ggplot2)
 library(piecewiseSEM)
+library(lavaan)
 
 ############################
 #### load functions ####
@@ -162,7 +163,7 @@ narea_mad <- mad(leaf$narea, na.rm = T)
 
 # leaf_sub <- subset(leaf, chi < 0.95 & beta < 2000 & beta >1 & chi > 0.05)
 leaf_sub <- subset(leaf, chi < 0.95 & chi > 0.05)
-leaf_sub <- leaf_sub[!(leaf_sub$photosynthetic_pathway == "C3" & leaf_sub$chi < 0.2),]
+# leaf_sub <- leaf_sub[!(leaf_sub$photosynthetic_pathway == "C3" & leaf_sub$chi < 0.2),]
 
 nrow(leaf_sub)
 
@@ -189,6 +190,9 @@ leaf_n <- leaf_sub
 # leaf_n$trt_fac
 
 nrow(leaf_n)
+levels(as.factor(leaf_n$site_code))
+nrow(subset(leaf_n, photosynthetic_pathway == 'C4'))
+nrow(subset(leaf_n, Nfix == 'yes'))
 
 ### calculate treatment type averages
 leaf_site_N <- leaf_n %>%
@@ -259,20 +263,35 @@ beta_lmer <- lmer(log(beta) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + alpha +
                          (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
                        data = leaf_n)
 plot(resid(beta_lmer) ~ fitted(beta_lmer))
-summary(beta_lmer) # N = 
+summary(beta_lmer) # N = 2118
 rsquared(beta_lmer)
 Anova(beta_lmer, type = 'III')
 beta_mfx <- marginaleffects(beta_lmer)
 summary(beta_mfx)
 beta_lmer_Ntrt_emmeans <- summary(emmeans(beta_lmer, ~Ntrt_fac))
 # emmeans(beta_lmer, ~Nfix)
-emmeans(beta_lmer, ~photosynthetic_pathway)
+beta_lmer_c4_emmeans <- summary(emmeans(beta_lmer, ~photosynthetic_pathway))
 beta_change <- ((exp(beta_lmer_Ntrt_emmeans[2, 2]) - exp(beta_lmer_Ntrt_emmeans[1, 2]))/
   exp(beta_lmer_Ntrt_emmeans[1, 2])) * 100
+beta_change_c4 <- ((exp(beta_lmer_c4_emmeans[2, 2]) - exp(beta_lmer_c4_emmeans[1, 2]))/
+                  exp(beta_lmer_c4_emmeans[1, 2])) * 100
 
 #### H1 support: Soil N reduces beta, C4 reduces beta
 
 #### Hyp 1b: the beta response is less negative when AGB increases
+beta_agb_lmer <- lmer(log(beta) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac * spp_live_mass + 
+                        spp_live_mass * alpha +
+                    Nfix + photosynthetic_pathway +
+                    (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
+                  data = leaf_n)
+plot(resid(beta_agb_lmer) ~ fitted(beta_agb_lmer))
+summary(beta_agb_lmer) # N = 1763
+rsquared(beta_agb_lmer)
+Anova(beta_agb_lmer, type = 'III')
+summary(emmeans(beta_agb_lmer, ~Ntrt_fac))
+summary(emmeans(beta_agb_lmer, ~Ptrt_fac))
+summary(emmeans(beta_agb_lmer, ~photosynthetic_pathway))
+
 hist(delta_beta_data$delta_beta)
 hist(log(delta_beta_data$delta_beta + 100))
 hist(delta_beta_data$delta_live_mass)
@@ -298,7 +317,7 @@ plot(delta_beta_data$delta_beta ~ delta_beta_data$delta_live_mass)
 
 #### Hyp 2: chi is negatively related to soil N and vpd, positively related to soil water and T, and lower in C4
 ##### note no hypothesized effcect of Nfix as this didn't come out in the beta impacts
-chi_lmer <- lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + alpha +
+chi_lmer <- lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac + # alpha +
                    Nfix + photosynthetic_pathway +
                    tmp2_gs + vpd2_gs +
                    (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
@@ -309,9 +328,9 @@ rsquared(chi_lmer)
 Anova(chi_lmer, type = 'III')
 chi_mfx <- marginaleffects(chi_lmer)
 summary(chi_mfx)
-# emmeans(chi_lmer, ~trt_fac) # negative effect
-# emmeans(chi_lmer, ~photosynthetic_pathway) # lower in C4
-# emtrends(chi_lmer, ~1, var = 'tmp2_gs') # positive
+emmeans(chi_lmer, ~Ntrt_fac) # negative effect
+emmeans(chi_lmer, ~photosynthetic_pathway) # lower in C4
+emtrends(chi_lmer, ~1, var = 'alpha') # positive
 
 #### Hyp 2: soil N (-), alpha (+), and C4 (-) confirmed...no impact of Nfix, T, or vpd
 
@@ -446,6 +465,11 @@ leaf_n$chi_pred_beta <- pred_c3_beta$chi_pred_beta + pred_c4_beta$chi_pred_beta
 hist(leaf_n$chi_pred_beta)
 hist(leaf_n$chi_pred)
 
+## make dataset summarized by site and plant type
+leaf_n_group_by <- group_by(leaf_n, site_code, photosynthetic_pathway)
+leaf_n_site_c4 <- summarise(leaf_n_group_by, chi_mean = mean(chi, na.rm = T),
+                            chi_pred_beta_mean = mean(chi_pred_beta, na.rm = T))
+
 ## predicting chi from optimality
 chi_pred_beta_lm <- lm(chi ~ chi_pred_beta, data = leaf_n)
 plot(resid(chi_pred_beta_lm) ~ fitted(chi_pred_beta_lm))
@@ -453,9 +477,55 @@ summary(chi_pred_beta_lm) # N =
 Anova(chi_pred_beta_lm, type = 'III')
 chi_beta_mfx <- marginaleffects(chi_pred_beta_lm)
 summary(chi_beta_mfx)
+emtrends(chi_pred_beta_lm, ~1, var = 'chi_pred_beta_mean')
 
 plot(chi ~ chi_pred_beta, data = leaf_n)
 abline(0,1)
+
+## prediction plot
+chi_beta_pred_plot <- ggplot(data = leaf_n, aes(x = chi_pred_beta, y = chi)) +
+  theme(legend.position = NULL,
+        axis.title.y = element_text(size = rel(2), colour = 'black'),
+        axis.title.x = element_text(size = rel(2), colour = 'black'),
+        axis.text.x = element_text(size = rel(2)),
+        axis.text.y = element_text(size = rel(2)),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "white"),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black")) +
+  geom_abline(slope=1, intercept=0, lty = 2) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = 'lm') + #, formula=y~0+x)
+  xlab('Predicted χ') +
+  ylab('Observed χ') +
+  xlim(c(0.5, 0.9)) +
+  ylim(c(0,1))
+
+## SEM prediction of chi
+leaf_n$Ntrt_cont[leaf_n$Ntrt_fac == '0'] <- 0
+leaf_n$Ptrt_cont[leaf_n$Ptrt_fac == '0'] <- 0
+leaf_n$Ntrt_cont[leaf_n$Ntrt_fac == '1'] <- 1
+leaf_n$Ptrt_cont[leaf_n$Ptrt_fac == '1'] <- 1
+leaf_n$Nfix_cont[leaf_n$Nfix == 'no'] <- 0
+leaf_n$Nfix_cont[leaf_n$Nfix == 'yes'] <- 1
+leaf_n$photosynthetic_pathway_cont[leaf_n$photosynthetic_pathway == 'C3'] <- 0
+leaf_n$photosynthetic_pathway_cont[leaf_n$photosynthetic_pathway == 'C4'] <- 1
+
+leaf_n$scale.beta <- scale(leaf_n$beta)
+leaf_n$scale.Ntrt_cont <- scale(leaf_n$Ntrt_cont)
+leaf_n$scale.Ptrt_cont <- scale(leaf_n$Ptrt_cont)
+leaf_n$scale.Nfix_cont <- scale(leaf_n$Nfix_cont)
+leaf_n$scale.photosynthetic_pathway_cont <- scale(leaf_n$photosynthetic_pathway_cont)
+leaf_n$scale.alpha <- scale(leaf_n$alpha)
+leaf_n$scale.chi <- scale(leaf_n$chi)
+leaf_n$scale.vpd2_gs <- scale(leaf_n$vpd2_gs)
+leaf_n$scale.tmp2_gs <- scale(leaf_n$tmp2_gs)
+
+chi_path <- 'scale.beta ~ scale.Ntrt_cont + scale.Ptrt_cont + scale.Nfix_cont + scale.photosynthetic_pathway_cont + scale.alpha
+             scale.chi ~ scale.beta + scale.vpd2_gs + scale.tmp2_gs'
+
+fit.chi_path <- sem(chi_path, data = leaf_n)
+summary(fit.chi_path, standardized = T, rsq = T)
 
 
 
