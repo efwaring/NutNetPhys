@@ -383,6 +383,59 @@ chi_change_c4 <- ((inv.logit(chi_lmer_c4_emmeans[2, 2]) - inv.logit(chi_lmer_c4_
 
 #### Hyp 2: soil N (-) and C4 (-) confirmed...no impact of Nfix, T, or vpd
 
+#### Hyp 3: Nmass positively related to light, vpd, soil N, C4, and Nfix
+#### negatively related to temperature and soil water
+nmass_lmer <- lmer(log(nmass) ~ Ntrt_fac + 
+                     REW_corr +
+                     Nfix + photosynthetic_pathway +
+                     tmp2_gs + vpd2_gs +
+                     par2_gs +
+                     (1|Taxon) + (1|site_code) + (1|site_code:block_fac) +
+                     (1|site_code:block_fac:PKtrt), 
+                  data = leaf_n)
+plot(resid(nmass_lmer) ~ fitted(nmass_lmer))
+summary(nmass_lmer) # N = 2009
+Anova(nmass_lmer, type = 'III')
+nmass_mfx <- marginaleffects(nmass_lmer)
+summary(nmass_mfx)
+
+#### Hyp 3: soil N (+), light (+), Nfix (+; separate from effect on beta) confirmed
+#### C4 effect is negative (separate from effect on beta)
+#### no temperature vpd or soil moisture effect
+
+#### Hyp 4: Marea positively related to light
+#### negatively related to temperature
+marea_lmer <- lmer(log(lma) ~ Ntrt_fac + 
+                     REW_corr +
+                     tmp2_gs + par2_gs +
+                     (1|Taxon) + (1|site_code) + (1|site_code:block_fac) +
+                     (1|site_code:block_fac:trt), # note that trt (not PKtrt) used here
+                  data = leaf_n)
+plot(resid(marea_lmer) ~ fitted(marea_lmer))
+summary(marea_lmer) # N = 1768
+Anova(marea_lmer, type = 'III')
+marea_mfx <- marginaleffects(marea_lmer)
+summary(marea_mfx)
+
+#### Hyp 4: no effects except separate negative effect of soil N?, so we should expect same impact on Nmass as to Narea
+
+#### Hyp 5: Narea positively related to light, vpd, soil N, C4, and Nfix
+#### negatively related to temperature and soil water
+narea_lmer <- lmer(log(narea) ~ Ntrt_fac + 
+                     REW_corr +
+                     Nfix + photosynthetic_pathway +
+                     tmp2_gs + vpd2_gs + par2_gs +
+                     (1|Taxon) + (1|site_code) + (1|site_code:block_fac) +
+                     (1|site_code:block_fac:trt), 
+                  data = leaf_n)
+plot(resid(narea_lmer) ~ fitted(narea_lmer))
+summary(narea_lmer) # N = 1766
+Anova(narea_lmer, type = 'III')
+narea_mfx <- marginaleffects(narea_lmer)
+summary(narea_mfx)
+
+#### Hyp 5: only a positive soil N effect and reduction in C4, but others washed out
+
 #### hypothesis 1 and 2 plot
 
 # beta_lmer_Ntrt_emmeans <- summary(emmeans(beta_lmer, ~Ntrt_fac))
@@ -479,51 +532,11 @@ multiplot(beta_Ntrt_plot, beta_photosynthetic_pathway_plot,
 dev.off()
 
 
-#### Hyp 3: Nmass positively related to light, vpd, soil N, C4, and Nfix
-#### negatively related to temperature and soil water
-# nmass_lmer <- lmer(log(nmass) ~ trt_fac + alpha + 
-#                      Nfix + #photosynthetic_pathway +
-#                    tmp2_gs + vpd2_gs +
-#                      par2_gs +
-#                    (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
-#                  data = leaf_n)
-# plot(resid(nmass_lmer) ~ fitted(nmass_lmer))
-# summary(nmass_lmer) # N = 
-# Anova(nmass_lmer, type = 'III')
-# nmass_mfx <- marginaleffects(nmass_lmer)
-# summary(nmass_mfx)
 
-#### Hyp 3: soil N (+), light (+), Nfix (+) confirmed
-#### no temperature vpd or alpha effect
 
-#### Hyp 4: Marea positively related to light
-#### negatively related to temperature
-# marea_lmer <- lmer(log(lma) ~ tmp2_gs + par2_gs +
-#                      (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
-#                    data = leaf_n)
-# plot(resid(marea_lmer) ~ fitted(marea_lmer))
-# summary(marea_lmer) # N = 
-# Anova(marea_lmer, type = 'III')
-# marea_mfx <- marginaleffects(marea_lmer)
-# summary(marea_mfx)
 
-#### Hyp 4: no effects, so we should expect same impact on Nmass as to Narea
 
-#### Hyp 5: Narea positively related to light, vpd, soil N, C4, and Nfix
-#### negatively related to temperature and soil water
-# narea_lmer <- lmer(log(narea) ~ trt_fac + alpha + 
-#                      Nfix + #photosynthetic_pathway +
-#                      tmp2_gs + vpd2_gs +
-#                      par2_gs +
-#                      (1|Taxon) + (1|site_code) + (1|site_code:block_fac), 
-#                    data = leaf_n)
-# plot(resid(narea_lmer) ~ fitted(narea_lmer))
-# summary(narea_lmer) # N = 
-# Anova(narea_lmer, type = 'III')
-# narea_mfx <- marginaleffects(narea_lmer)
-# summary(narea_mfx)
 
-#### Hyp 5: only a positive soil N effect, but others washed out
 
 #### Hyp 6: we can estimate leaf chi from optimality
 beta_values <- summary(emmeans(beta_lmer, ~ Ntrt_fac * photosynthetic_pathway))
@@ -675,14 +688,20 @@ leaf_n$scale.Ntrt_cont <- scale(leaf_n$Ntrt_cont)
 leaf_n$scale.Ptrt_cont <- scale(leaf_n$Ptrt_cont)
 leaf_n$scale.Nfix_cont <- scale(leaf_n$Nfix_cont)
 leaf_n$scale.photosynthetic_pathway_cont <- scale(leaf_n$photosynthetic_pathway_cont)
-leaf_n$scale.alpha <- scale(leaf_n$alpha)
+leaf_n$scale.REW_corr <- scale(leaf_n$REW_corr)
 leaf_n$scale.chi <- scale(leaf_n$chi)
 leaf_n$scale.vpd2_gs <- scale(leaf_n$vpd2_gs)
 leaf_n$scale.tmp2_gs <- scale(leaf_n$tmp2_gs)
+leaf_n$scale.par2_gs <- scale(leaf_n$par2_gs)
+leaf_n$scale.narea <- scale(leaf_n$narea)
+leaf_n$scale.nmass <- scale(leaf_n$nmass)
+leaf_n$scale.lma <- scale(leaf_n$lma)
 
-chi_path <- 'scale.alpha ~ scale.vpd2_gs + scale.tmp2_gs
-             scale.beta ~ scale.Ntrt_cont + scale.Nfix_cont + scale.photosynthetic_pathway_cont + scale.alpha
-             scale.chi ~ scale.beta + scale.vpd2_gs + scale.tmp2_gs'
+chi_path <- 'scale.beta ~ scale.Ntrt_cont  + scale.photosynthetic_pathway_cont
+             scale.chi ~ scale.beta + scale.photosynthetic_pathway_cont
+             scale.nmass ~ scale.Ntrt_cont + scale.chi + scale.Nfix_cont + scale.photosynthetic_pathway_cont
+             scale.lma ~ scale.Ntrt_cont
+             scale.narea ~ scale.nmass + scale.lma'
 
 fit.chi_path <- sem(chi_path, data = leaf_n)
 summary(fit.chi_path, standardized = T, rsq = T)
