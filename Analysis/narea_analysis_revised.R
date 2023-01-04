@@ -14,11 +14,11 @@ library(marginaleffects)
 library(emmeans)
 # library(relaimpo)
 # library(patchwork)
-# library(multcomp)
-# library(ggplot2)
+library(multcomp)
+library(ggplot2)
 library(piecewiseSEM)
-library(lavaan)
-library(boot)
+# library(lavaan)
+# library(boot)
 
 ############################
 #### load functions ####
@@ -192,9 +192,9 @@ nrow(leaf)
 
 
 # leaf_sub <- subset(leaf, chi < 0.95 & beta < 2000 & beta >1 & chi > 0.05)
-leaf_sub <- subset(leaf, chi < 0.95 & chi > 0.05)
-leaf_sub <- leaf_sub[!(leaf_sub$photosynthetic_pathway == "C3" & leaf_sub$chi < 0.3),]
-leaf_sub <- subset(leaf_sub, beta < 1000)
+leaf_sub <- subset(leaf, chi < 0.95 & chi > 0.3 & pft != 'c4') # c4s are really throwing things off!
+# leaf_sub <- leaf_sub[!(leaf_sub$photosynthetic_pathway == "C3" & leaf_sub$chi < 0.3),]
+# leaf_sub <- subset(leaf_sub, beta < 1000)
 
 nrow(leaf_sub)
 
@@ -293,34 +293,35 @@ leaf_site_N <- leaf_n %>%
 ############################
 
 #### Hyp 1: soil N reduces beta, water availability increases beta, Nfix increases beta
-beta_lmer <- lmer(log(beta) ~ Ntrt_fac *
-                         pft *
+beta_lmer <- lmer(log(beta) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac *
+                         pft +
                          p_pet +
                          (1|Taxon) + 
                          #(1|site_code) + # removed because correlated with p_pet 
-                         (1|site_code:block_fac) + (1|site_code:Taxon) +
-                         (1|PKtrt) + (1|site_code:PKtrt), 
+                         (1|site_code:block_fac) + (1|site_code:Taxon), # +
+                         # (1|PKtrt) + (1|site_code:PKtrt), 
                        data = leaf_n)
 plot(resid(beta_lmer) ~ fitted(beta_lmer))
 summary(beta_lmer) # N = XXX
 rsquared(beta_lmer)
 Anova(beta_lmer, type = 'II')
-beta_mfx <- marginaleffects(beta_lmer)
-summary(beta_mfx)
+# beta_mfx <- marginaleffects(beta_lmer)
+# summary(beta_mfx)
 beta_lmer_Ntrt_emmeans <- summary(emmeans(beta_lmer, ~Ntrt_fac))
 # emmeans(beta_lmer, ~Nfix)
 beta_lmer_pft_emmeans <- summary(emmeans(beta_lmer, ~pft))
 beta_lmer_Ntrt_pft_emmeans <- summary(emmeans(beta_lmer, ~Ntrt_fac * pft))
+cld(emmeans(beta_lmer, ~Ntrt_fac * pft))
 beta_change <- ((exp(beta_lmer_Ntrt_emmeans[2, 2]) - exp(beta_lmer_Ntrt_emmeans[1, 2]))/
   exp(beta_lmer_Ntrt_emmeans[1, 2])) * 100
-beta_change_N_c4 <- ((exp(beta_lmer_Ntrt_pft_emmeans[6, 3]) - exp(beta_lmer_Ntrt_pft_emmeans[5, 3]))/
-                       exp(beta_lmer_Ntrt_pft_emmeans[5, 3])) * 100
+# beta_change_N_c4 <- ((exp(beta_lmer_Ntrt_pft_emmeans[6, 3]) - exp(beta_lmer_Ntrt_pft_emmeans[5, 3]))/
+#                        exp(beta_lmer_Ntrt_pft_emmeans[5, 3])) * 100
 beta_change_N_c3nofix <- ((exp(beta_lmer_Ntrt_pft_emmeans[2, 3]) - exp(beta_lmer_Ntrt_pft_emmeans[1, 3]))/
                        exp(beta_lmer_Ntrt_pft_emmeans[2, 3])) * 100
 beta_change_N_c3yesfix <- ((exp(beta_lmer_Ntrt_pft_emmeans[4, 3]) - exp(beta_lmer_Ntrt_pft_emmeans[3, 3]))/
                             exp(beta_lmer_Ntrt_pft_emmeans[3, 3])) * 100
 
-#### H1 support: Soil N reduces beta but not in N fixers, C4 reduces beta
+#### H1 support: Soil N reduces beta but not in N fixers
 
 
   
@@ -364,34 +365,38 @@ beta_change_N_c3yesfix <- ((exp(beta_lmer_Ntrt_pft_emmeans[4, 3]) - exp(beta_lme
 
 #### Hyp 2: chi is negatively related to soil N and vpd, positively related to soil water and T, and lower in C4
 ##### note no hypothesized effcect of Nfix as this didn't come out in the beta impacts
-chi_lmer <- lmer(logit(chi) ~ Ntrt_fac *
-                   pft *
+chi_lmer <- lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac *
+                   pft +
                    p_pet +
                    (1|Taxon) + 
                    #(1|site_code) + # removed because correlated with p_pet 
-                   (1|site_code:block_fac) + (1|site_code:Taxon) +
-                   (1|PKtrt) + (1|site_code:PKtrt), 
+                   (1|site_code:block_fac) + (1|site_code:Taxon), # +
+                 # (1|PKtrt) + (1|site_code:PKtrt), 
                  data = leaf_n)
 plot(resid(chi_lmer) ~ fitted(chi_lmer))
 summary(chi_lmer) # N = XXXX
 rsquared(chi_lmer)
 Anova(chi_lmer, type = 'II')
-chi_mfx <- marginaleffects(chi_lmer)
-summary(chi_mfx)
+# chi_mfx <- marginaleffects(chi_lmer)
+# summary(chi_mfx)
 chi_lmer_Ntrt_emmeans <- summary(emmeans(chi_lmer, ~Ntrt_fac))
 # emmeans(chi_lmer, ~Nfix)
 chi_lmer_pft_emmeans <- summary(emmeans(chi_lmer, ~pft))
 chi_lmer_Ntrt_pft_emmeans <- summary(emmeans(chi_lmer, ~Ntrt_fac * pft))
+cld(emmeans(chi_lmer, ~Ntrt_fac * pft))
 chi_change <- ((exp(chi_lmer_Ntrt_emmeans[2, 2]) - exp(chi_lmer_Ntrt_emmeans[1, 2]))/
                   exp(chi_lmer_Ntrt_emmeans[1, 2])) * 100
-chi_change_N_c4 <- ((exp(chi_lmer_Ntrt_pft_emmeans[6, 3]) - exp(chi_lmer_Ntrt_pft_emmeans[5, 3]))/
-                       exp(chi_lmer_Ntrt_pft_emmeans[5, 3])) * 100
+# chi_change_N_c4 <- ((exp(chi_lmer_Ntrt_pft_emmeans[6, 3]) - exp(chi_lmer_Ntrt_pft_emmeans[5, 3]))/
+#                        exp(chi_lmer_Ntrt_pft_emmeans[5, 3])) * 100
 chi_change_N_c3nofix <- ((exp(chi_lmer_Ntrt_pft_emmeans[2, 3]) - exp(chi_lmer_Ntrt_pft_emmeans[1, 3]))/
                             exp(chi_lmer_Ntrt_pft_emmeans[2, 3])) * 100
 chi_change_N_c3yesfix <- ((exp(chi_lmer_Ntrt_pft_emmeans[4, 3]) - exp(chi_lmer_Ntrt_pft_emmeans[3, 3]))/
                              exp(chi_lmer_Ntrt_pft_emmeans[3, 3])) * 100
 
 #### Hyp 2: soil N (-) and C4 (-) confirmed...no impact of Nfix, T, or vpd
+
+cor.test(log(leaf_n$beta), log(leaf_n$nmass), use = "pairwise.complete.obs")
+cor.test(logit(leaf_n$chi), log(leaf_n$nmass), use = "pairwise.complete.obs")
 
 #### Hyp 3: Nmass positively related to light, vpd, soil N, C4, and Nfix
 #### negatively related to temperature and soil water
@@ -478,10 +483,9 @@ beta_Ntrt_plot <- ggplot(aes(x = pft, y = log(beta), fill = Ntrt_fac), data = le
   # geom_errorbar(data = beta_lmer_Ntrt_emmeans, 
   #               aes(y= emmean, ymin = emmean - SE, ymax = emmean + SE, x = Ntrt_fac), 
   #               width = 0.2) + 
-  scale_x_discrete(labels = c(expression('C'[3] * ' non-N-fixer'), 
-                              expression('C'[3] * ' N-fixer'), 
-                              expression('C'[4]))) +
-  ylim(c(-2.5, 7.5)) +
+  scale_x_discrete(labels = c(expression('non-N-fixer'), 
+                              expression('N-fixer'))) +
+  ylim(c(4, 8)) +
   ylab('ln(β) (unitless)') +
   xlab('')
 
@@ -500,8 +504,7 @@ chi_Ntrt_plot <- ggplot(aes(x = pft, y = logit(chi), fill = Ntrt_fac), data = le
   guides(fill = "none") +
   # geom_boxplot(width = 0.5, fill = 'white', outlier.color = NA) +
   scale_x_discrete(labels = c(expression('C'[3] * ' non-N-fixer'), 
-                              expression('C'[3] * ' N-fixer'), 
-                              expression('C'[4]))) +
+                              expression('C'[3] * ' N-fixer'))) +
   # ylim(c(0, 2)) +
   ylab('logit(χ)') +
   xlab('')
@@ -565,7 +568,7 @@ leaf_n_site_Ntrt_pft_summary <- summarise(leaf_n_site_Ntrt_pft_groupby,
                                    chi_mean = mean(chi, na.rm = T),
                                    Ntrt = mean(Ntrt, na.rm = T))
 
-beta_Ntrt_site_plot <- ggplot(aes(x = Ntrt, y = log(beta_mean)), 
+beta_Ntrt_site_plot_c3_noNfix <- ggplot(aes(x = Ntrt, y = (beta_mean)), 
                               data = subset(leaf_n_site_Ntrt_pft_summary, pft == 'c3_noNfix')) +
   theme(legend.position = NULL,
         axis.title.y = element_text(size = rel(2), colour = 'black'),
@@ -576,14 +579,40 @@ beta_Ntrt_site_plot <- ggplot(aes(x = Ntrt, y = log(beta_mean)),
         panel.grid.major = element_line(colour = "white"),
         legend.background = element_blank(),
         legend.box.background = element_rect(colour = "black")) +
-  geom_point() +
-  geom_line(aes(group = site_code),color="grey") +
-  ylab('ln(β) (unitless)') +
+  geom_point(pch = 16, color="black", alpha = 0.3, size = 3) +
+  geom_line(aes(group = site_code), color="black", alpha = 0.3, lwd = 1) +
+  geom_point(aes(x = as.numeric(as.character(Ntrt_fac)), y = exp(emmean)), 
+             data = subset(beta_lmer_Ntrt_pft_emmeans, pft == 'c3_noNfix'),
+             color="black", alpha = 0.7, size = 10) +
+  geom_line(aes(x = as.numeric(as.character(Ntrt_fac)), y = exp(emmean)), 
+            data = subset(beta_lmer_Ntrt_pft_emmeans, pft == 'c3_noNfix'),
+            color="black", alpha = 0.7, lwd = 3) +
+  ylab('β (unitless)') +
   xlab('N treatment') +
-  xlim(c(-0.25, 1.25)) + 
   scale_x_continuous(breaks = c(0, 1), labels=c('0' = 'Ambient', '1' = 'Added'))
 
-
+beta_Ntrt_site_plot_c3_yesNfix <- ggplot(aes(x = Ntrt, y = (beta_mean)), 
+                              data = subset(leaf_n_site_Ntrt_pft_summary, pft == 'c3_yesNfix')) +
+  theme(legend.position = NULL,
+        axis.title.y = element_text(size = rel(2), colour = 'black'),
+        axis.title.x = element_text(size = rel(2), colour = 'black'),
+        axis.text.x = element_text(size = rel(2)),
+        axis.text.y = element_text(size = rel(2)),
+        panel.background = element_rect(fill = 'white', colour = 'black'),
+        panel.grid.major = element_line(colour = "white"),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black")) +
+  geom_point(pch = 16, color="black", alpha = 0.3, size = 3) +
+  geom_line(aes(group = site_code), color="black", alpha = 0.3, lwd = 1) +
+  geom_point(aes(x = as.numeric(as.character(Ntrt_fac)), y = exp(emmean)), 
+             data = subset(beta_lmer_Ntrt_pft_emmeans, pft == 'c3_yesNfix'),
+             color="black", alpha = 0.7, size = 10) +
+  geom_line(aes(x = as.numeric(as.character(Ntrt_fac)), y = exp(emmean)), 
+            data = subset(beta_lmer_Ntrt_pft_emmeans, pft == 'c3_yesNfix'),
+            color="black", alpha = 0.7, lwd = 3) +
+  ylab('β (unitless)') +
+  xlab('N treatment') +
+  scale_x_continuous(breaks = c(0, 1), labels=c('0' = 'Ambient', '1' = 'Added'))
 
 
 #### Hyp 6: we can estimate leaf chi from optimality
