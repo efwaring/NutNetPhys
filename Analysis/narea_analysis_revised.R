@@ -362,7 +362,7 @@ beta_change_N_c3yesfix <- ((exp(beta_lmer_Ntrt_pft_emmeans[4, 3]) - exp(beta_lme
 # plot(log(delta_beta_data$delta_beta + 100) ~ log(delta_beta_data$delta_live_mass + 100))
 
 #### Hyp 1b: support that the AGB response matters (lowers the beta response)
-
+###
 #### Hyp 2: chi is negatively related to soil N and vpd, positively related to soil water and T, and lower in C4
 ##### note no hypothesized effcect of Nfix as this didn't come out in the beta impacts
 chi_lmer <- lmer(logit(chi) ~ Ntrt_fac * Ptrt_fac * Ktrt_fac *
